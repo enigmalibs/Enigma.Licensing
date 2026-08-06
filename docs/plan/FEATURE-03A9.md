@@ -197,7 +197,7 @@ Branch: `feature/feature-03a9-phase01-model-envelope`
 
 Acceptance: build + tests green, zero warnings; envelope JSON matches the validated preview shape.
 
-## PHASE02 — Key format & key service — **TODO**
+## PHASE02 — Key format & key service — **DONE**
 
 Branch: `feature/feature-03a9-phase02-keys`
 

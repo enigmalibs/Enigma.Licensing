@@ -9,8 +9,9 @@ namespace Enigma.Licensing.Internal;
 /// <remarks>
 /// <para>
 /// One place, two instances, differing only in whitespace. The settings themselves are what the
-/// <c>enigma-license/1</c> format specifies: camelCase property names, and optional fields omitted
-/// rather than written as <c>null</c>, so an absent value and an explicit null are the same document.
+/// <c>enigma-license/1</c> and <c>enigma-key/1</c> formats specify — they share them, so the two file
+/// types read and write alike: camelCase property names, and optional fields omitted rather than
+/// written as <c>null</c>, so an absent value and an explicit null are the same document.
 /// </para>
 /// <para>
 /// <b>Everything else is left strict on purpose.</b> Case-insensitive property matching, comments and
@@ -27,7 +28,10 @@ namespace Enigma.Licensing.Internal;
 /// </remarks>
 internal static class LicenseJson
 {
-    /// <summary>Options for the outer license envelope — indented, for a readable file.</summary>
+    /// <summary>
+    /// Options for the documents that are files in their own right — the license envelope and the key
+    /// file. Indented, because a human opens them.
+    /// </summary>
     internal static readonly JsonSerializerOptions Envelope = CreateOptions(writeIndented: true);
 
     /// <summary>Options for the signed license payload — compact, since it is stored as base64.</summary>
