@@ -20,11 +20,14 @@
        attributes either — versions live in Directory.Packages.props (CPM). -->
   <!-- Enigma.Core 1.1.0 — the cryptographic engine behind every service here — is referenced by
        FEATURE-03A9, which is also when its pin lands in Directory.Packages.props. -->
-  <!-- System.Buffers (Span/Memory/ArrayPool support) is framework-provided on net8.0+; it is only
-       needed as an explicit package on netstandard2.0. Referencing it on net8.0/net10.0 would raise
-       NU1510 and fail the zero-warnings build. -->
+  <!-- System.Buffers (Span/Memory/ArrayPool support) and System.Text.Json are framework-provided on
+       net8.0+; they are only needed as explicit packages on netstandard2.0. Referencing either on
+       net8.0/net10.0 would raise NU1510 and fail the zero-warnings build. The library's JSON use is
+       confined to what System.Text.Json 8.0 already supports (required members, IReadOnly*
+       collections), so the inbox versions on the modern TFMs are sufficient. -->
   <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
     <PackageReference Include="System.Buffers" />
+    <PackageReference Include="System.Text.Json" />
   </ItemGroup>
   <!-- PolySharp: polyfills modern C# on netstandard2.0. Compile-only (PrivateAssets=all). -->
   <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">

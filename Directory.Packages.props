@@ -7,10 +7,14 @@
        Avalonia 12.1.1 (version-coupled, bump as a unit), Enigma.Avalonia.Desktop 1.0.0,
        Enigma.Icons/.Phosphor/.Avalonia 1.0.0, CommunityToolkit.Mvvm 8.4.2,
        Microsoft.Extensions.Hosting 10.0.10 (FEATURE-179C). -->
-  <!-- Library. System.Buffers (Span/Memory) and PolySharp (compile-only C# polyfills) are the
-       netstandard2.0-support pair and are referenced ONLY under that TFM in the library csproj. -->
+  <!-- Library. System.Buffers (Span/Memory), System.Text.Json and PolySharp (compile-only C#
+       polyfills) are the netstandard2.0-support set and are referenced ONLY under that TFM in the
+       library csproj: net8.0/net10.0 get System.Text.Json from the shared framework, and referencing
+       the package there would raise NU1510 and fail the zero-warnings build. 10.0.10 is the version
+       whose own netstandard2.0 dependency set already matches the System.Buffers 4.6.1 pinned here. -->
   <ItemGroup>
     <PackageVersion Include="System.Buffers" Version="4.6.1" />
+    <PackageVersion Include="System.Text.Json" Version="10.0.10" />
     <PackageVersion Include="PolySharp" Version="1.16.0" />
   </ItemGroup>
   <!-- Tests (MTP-native: xunit.v3 only; coverlet.collector for coverage). No Microsoft.NET.Test.Sdk. -->

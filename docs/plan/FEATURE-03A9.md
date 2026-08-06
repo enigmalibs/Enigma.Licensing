@@ -1,6 +1,6 @@
 # FEATURE-03A9 — Licensing core library
 
-**Status:** TODO
+**Status:** IN PROGRESS
 **Type:** multi-phase (4 phases, one branch per phase: `feature/feature-03a9-phaseNN-<slug>`)
 
 ## Objective
@@ -178,7 +178,7 @@ when the **license's** productId contains `*`) → deviceId ordinal match. Resul
 
 ---
 
-## PHASE01 — License model & envelope format — **TODO**
+## PHASE01 — License model & envelope format — **DONE**
 
 Branch: `feature/feature-03a9-phase01-model-envelope`
 

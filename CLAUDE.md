@@ -4,15 +4,15 @@ Guidance for Claude Code (and other AI agents) working in this repository.
 
 ## Current state
 
-**This repository is a bootstrap skeleton.** `FEATURE-2FE8` stood up the git repo, the root
-configuration, an empty multi-targeted library and an MTP-native xUnit v3 test project with a single
-smoke test. There is **no licensing code yet** — `src/Enigma.Licensing/` contains only
-`BootstrapPlaceholder.cs` and no real types; `FEATURE-03A9-PHASE01` deletes that placeholder and
-adds the first model types.
+`FEATURE-2FE8` stood up the repo, the root configuration, a multi-targeted library and an MTP-native
+xUnit v3 test project. `FEATURE-03A9-PHASE01` deleted the bootstrap placeholder and shipped the
+**license model and the `enigma-license/1` envelope format** — see *Shipped* below.
 
-Everything under *Planned architecture* below is the agreed design recorded in `docs/plan/`, not
-code that exists. Read the plan file before implementing any of it; the plan is the contract. Never
-write a doc, comment or summary that describes a planned type as if it already ships.
+Nothing signs or verifies yet. There are **no keys, no services and no DI registration**: the next
+three phases of `FEATURE-03A9` add them, and until then everything under *Planned architecture* is
+the agreed design recorded in `docs/plan/`, not code that exists. Read the plan file before
+implementing any of it; the plan is the contract. Never write a doc, comment or summary that
+describes a planned type as if it already ships.
 
 ## What this is
 
@@ -25,21 +25,53 @@ It is the successor to **Enigma.LicenseManager** (v1.2.0, which stays on NuGet f
 consumers). It is a **clean break**: the license and key formats are new, and there is deliberately
 **no compatibility with, reader for, or converter from** the predecessor's formats. Do not add one.
 
-## Planned architecture
+## Shipped
 
 ### License format `enigma-license/1` — signed JSON envelope (FEATURE-03A9-PHASE01)
 
-Outer JSON: `{ "format", "algorithm", "keyId", "payload", "signature" }`. `payload` is base64 of the
-UTF-8 JSON license data; `signature` is base64.
+`LicenseEnvelope` is an indented JSON object with exactly five fields, in this order:
+
+```json
+{
+  "format": "enigma-license/1",
+  "algorithm": "RSA-SHA256",
+  "keyId": "3F9A1C40D2B87E56",
+  "payload": "eyJpZCI6IjAxSllRN1pLM00…",
+  "signature": "cHJldGVuZC1zaWduYXR1cmU…"
+}
+```
+
+`payload` is base64 of the compact UTF-8 JSON of a `License`; `signature` is base64. `keyId` is
+omitted when null, as is every optional field of the payload — `JsonIgnoreCondition.WhenWritingNull`
+means an absent value and an explicit null are the same document. Everything else about the
+serializer is left **strict**: camelCase names matched case-sensitively, no comments, no trailing
+commas. Unknown *envelope* fields are ignored, though — they fall outside the signature anyway, and
+rejecting them would rule out a future optional field within format 1.
 
 **Load-bearing invariant — the signature covers the exact payload bytes, and there is no
 canonicalization step.** The predecessor's hand-rolled `GetDataForSignature()` string was the source
 of its critical v1.0.0 bug; this design eliminates the entire class of defect. Never reintroduce a
-"build a string to sign" helper. Algorithm substitution is defeated by *validating* rather than
-canonicalizing: the verifier is chosen from the envelope's `algorithm` value, so flipping that field
-makes the signature fail to verify under the substituted scheme (and the ML-DSA parameter set is
-additionally bound to the key itself). This reasoning belongs in the XML docs, and a tamper test
-flipping `algorithm` is part of the acceptance criteria.
+"build a string to sign" helper, and never re-serialize a `License` in order to check one. Algorithm
+substitution is defeated by *validating* rather than canonicalizing: the verifier is chosen from the
+envelope's `algorithm` value, so flipping that field makes the signature fail to verify under the
+substituted scheme (and the ML-DSA parameter set is additionally bound to the key itself). This
+reasoning lives in the XML docs of `LicenseEnvelope` and `LicensePayload`; a tamper test flipping
+`algorithm` is part of `FEATURE-03A9-PHASE03`'s acceptance criteria.
+
+`LicenseEnvelope.LoadAsync` checks `format` (a parse concern — it decides whether the document shape
+is interpretable) but deliberately **not** `algorithm` (a verdict the validator has to be able to
+report as `UnknownAlgorithm`, which it cannot do for a document that never parsed). It throws
+`ArgumentException` — with the underlying `JsonException` as `InnerException` — for anything it
+cannot parse; the *validator* is the layer that never throws.
+
+Types in place: `License` (`HasFeature` is ordinal; `Features`/`Claims` coerce an assigned null to
+empty, so an untrusted payload cannot hand downstream code a null), `LicenseRequest`,
+`LicenseEnvelope` + `LicenseEnvelope.CurrentFormat`, `LicenseSignatureAlgorithm`, and the internal
+seams `AlgorithmIds` (the single enum ↔ wire-string table), `LicenseJson` and `LicensePayload`.
+`InternalsVisibleTo("Enigma.Licensing.UnitTests")` is declared in `Properties/AssemblyInfo.cs` so the
+last two can be tested directly.
+
+## Planned architecture
 
 ### Key format `enigma-key/1` — unified for both algorithms (FEATURE-03A9-PHASE02)
 
@@ -60,12 +92,17 @@ JSON envelope: `{ "format", "kind": "public"|"private", "algorithm", "keyId", "e
 
 `LicenseSignatureAlgorithm` covers the full Enigma.Core signing surface, with one internal
 `AlgorithmIds` class as the **single source of truth** for the enum ↔ string mapping (mirroring
-Enigma.Core's `SignatureAlgorithms.ToJcaName`):
+Enigma.Core's `SignatureAlgorithms.ToJcaName`). The enum and the mapping **ship** (PHASE01); only the
+*Backed by* column is still planned:
 
 | Enum member | Identifier | Backed by |
 |---|---|---|
 | `RsaSha256` / `RsaSha384` / `RsaSha512` | `RSA-SHA256` / `RSA-SHA384` / `RSA-SHA512` | `IPublicKeyService`, PKCS#1 v1.5, PEM keys |
 | `MLDsa44` / `MLDsa65` / `MLDsa87` | `ML-DSA-44` / `ML-DSA-65` / `ML-DSA-87` | `IMLDsaServiceFactory.CreateMLDsaService(parameterSet)`, raw `byte[]` keys |
+
+Matching is ordinal and case-sensitive both ways, and both directions use the unknown → null/false
+pattern rather than throwing — `AlgorithmIds` maps, it does not decide what an unmappable value
+means. Nothing outside that class may spell one of these strings.
 
 ### Services & DI (FEATURE-03A9-PHASE03 / PHASE04)
 
@@ -76,10 +113,11 @@ query time). Registration is a single `AddEnigmaLicensing()` extension in the
 `Microsoft.Extensions.DependencyInjection` namespace (predecessor convention), doing
 `TryAddSingleton` for all four.
 
-The model (`License`, `LicenseRequest`, `LicenseEnvelope`, `LicenseValidationResult`) is
-**immutable** — `init`-only records. Dates are `DateTimeOffset`, serialized ISO-8601 and validated
-against `DateTimeOffset.UtcNow`; there is **no clock abstraction** (tests craft validity windows
-instead). Serialization is System.Text.Json with camelCase names — never Newtonsoft.
+The model (`License`, `LicenseRequest`, `LicenseEnvelope` — all shipped — plus the planned
+`LicenseValidationResult`) is **immutable**: sealed `init`-only records, varied with `with`. Dates are
+`DateTimeOffset`, serialized ISO-8601 with an explicit offset and validated against
+`DateTimeOffset.UtcNow`; there is **no clock abstraction** (tests craft validity windows instead).
+Serialization is System.Text.Json with camelCase names — never Newtonsoft.
 
 ### Validation order
 
@@ -118,12 +156,23 @@ Directory.Packages.props             Central Package Management (all package ver
 global.json                          SDK 10.0.100 (latestFeature); test runner = Microsoft.Testing.Platform
 LICENSE.md                           MIT
 README.md, RELEASENOTES.md           Empty — written at release time (FEATURE-57BC-PHASE03)
-src/Enigma.Licensing/                The library — no real types yet
-  BootstrapPlaceholder.cs            Throwaway; deleted by FEATURE-03A9-PHASE01
+src/Enigma.Licensing/                The library
+  License.cs                         The license data — the signed payload's model
+  LicenseRequest.cs                  Generator input (PHASE03 consumes it)
+  LicenseEnvelope.cs                 The enigma-license/1 document + SaveAsync/LoadAsync
+  LicenseSignatureAlgorithm.cs       The six signing schemes
+  Internal/AlgorithmIds.cs           Single source of truth for enum ↔ wire strings
+  Internal/LicenseJson.cs            The two JsonSerializerOptions instances
+  Internal/LicensePayload.cs         License ↔ signed UTF-8 JSON bytes
+  Properties/AssemblyInfo.cs         InternalsVisibleTo for the test assembly
   Keys/                              planned — key format & IKeyService (FEATURE-03A9-PHASE02)
 src/Enigma.Licensing.Desktop/        planned — Avalonia issuer app (FEATURE-179C-PHASE01)
 tests/Enigma.Licensing.UnitTests/    xUnit v3 test suite
   SmokeTest.cs                       Toolchain smoke test
+  LicenseTestData.cs                 Deterministic shared fixtures (no UtcNow — output is pinned)
+  Api/                               Tests over the public surface
+  Internal/                          Tests over the internal seams (needs InternalsVisibleTo)
+  Model/                             Tests over the records
 tests/Enigma.Licensing.Desktop.UnitTests/   planned (FEATURE-179C-PHASE01)
 docs/roadmap.md                      Work-item registry
 docs/plan/                           Per-item plans
@@ -142,14 +191,17 @@ There is **no CI workflow**, deliberately — consistent with every sibling Enig
 - Test projects target **`net8.0;net10.0`**. `netstandard2.0` is never a test TFM; its polyfill
   surface is exercised through the `net8.0` paths. The planned desktop app and its test project are
   **net10.0** only.
-- **Currently pinned** in `Directory.Packages.props` — only what the skeleton actually references:
-  `PolySharp` 1.16.0 and `System.Buffers` 4.6.1 (both **netstandard2.0 only** in the library),
-  `xunit.v3` 3.2.2, `coverlet.collector` 10.0.1. Referencing `System.Buffers` on net8.0+ raises
-  NU1510 and fails the zero-warning build; PolySharp (compile-only, `PrivateAssets=all`) is what
-  makes `init`/`required` members and the nullable-analysis attributes work on netstandard2.0.
-- There is **no runtime dependency yet.** Planned library dependencies (all MIT): Enigma.Core 1.1.0,
-  System.Text.Json (per-TFM strategy decided in `FEATURE-03A9-PHASE01`), Ulid (license ids),
-  DeviceId (device identity), Microsoft.Extensions.DependencyInjection.Abstractions (low floor).
+- **Currently pinned** in `Directory.Packages.props` — only what the code actually references:
+  `PolySharp` 1.16.0, `System.Buffers` 4.6.1 and `System.Text.Json` 10.0.10 (all three
+  **netstandard2.0 only** in the library), `xunit.v3` 3.2.2, `coverlet.collector` 10.0.1.
+  Referencing `System.Buffers` or `System.Text.Json` on net8.0+ raises NU1510 and fails the
+  zero-warning build — both are framework-provided there, and the library's JSON usage stays inside
+  what System.Text.Json 8.0 supports. PolySharp (compile-only, `PrivateAssets=all`) is what makes
+  `init`/`required` members and the nullable-analysis attributes work on netstandard2.0.
+- **The only runtime dependency so far is System.Text.Json, and only on netstandard2.0.** Still to
+  land (all MIT): Enigma.Core 1.1.0 (`FEATURE-03A9-PHASE02`), Ulid (license ids) and DeviceId
+  (device identity) (`PHASE03`), Microsoft.Extensions.DependencyInjection.Abstractions at a low
+  floor (`PHASE04`).
   Planned app dependencies: Avalonia 12.1.1 (the coupled Avalonia set is bumped only as a unit),
   Enigma.Avalonia.Desktop 1.0.0, Enigma.Icons / Enigma.Icons.Phosphor / Enigma.Icons.Avalonia 1.0.0,
   CommunityToolkit.Mvvm 8.4.2, Microsoft.Extensions.Hosting 10.0.10.
@@ -179,6 +231,12 @@ Tests are **MTP-native**: `xunit.v3` + `coverlet.collector`, with **no** `Micros
 and **no** `xunit.runner.visualstudio` — both break the Microsoft Testing Platform. `Xunit` is the
 only implicit using in the test project. Test fixtures are copied by a `**/*.json` + `**/*.txt`
 `PreserveNewest` glob.
+
+The xunit.v3 analyzers run at warning level, so under `TreatWarningsAsErrors` **they are build
+errors**. The one that bites constantly is `xUnit1051`: any call taking a `CancellationToken` must be
+passed `TestContext.Current.CancellationToken`. `LicenseEnvelopeTests` keeps a
+`private static CancellationToken Token => TestContext.Current.CancellationToken;` for this — copy
+that pattern rather than suppressing the rule.
 
 ### Two ways this build goes red without anyone touching the repo
 
@@ -215,6 +273,11 @@ MTP coverage needs `Microsoft.Testing.Extensions.CodeCoverage`. Measure before t
   `Org.BouncyCastle.*` type. Keep the isolation guard test green once it exists.
 - **No legacy compatibility.** Never add a reader, converter or fallback for Enigma.LicenseManager
   licenses or keys.
+- **Serialization is reflection-based, so the library is not trim/AOT-safe.** A consumer publishing
+  with `PublishAot`, or with `JsonSerializerIsReflectionEnabledByDefault=false`, gets
+  `InvalidOperationException` on the first serialize. Fixing it means a source-generated
+  `JsonSerializerContext` wired into `LicenseJson` — worth deciding deliberately once the model is
+  complete (PHASE04 or the release phase), not discovering at v1.0.0.
 - **Documentation.** Every public member carries XML docs; `GenerateDocumentationFile=true` is on
   from bootstrap, so a missing comment fails the zero-warning build. Per-category usage guides will
   live under `docs/guides/` (`FEATURE-57BC-PHASE02`).
@@ -239,6 +302,6 @@ Each unit of work gets its own branch (`feature/…`, `bugfix/…`, `review/…`
 plan's acceptance criteria are met, the roadmap/plan statuses are updated, and the completion doc is
 written. Commits are left to the maintainer.
 
-The planned sequence is a hard dependency chain: `FEATURE-2FE8` (this skeleton) → `FEATURE-03A9`
-(licensing core library, 4 phases) → `FEATURE-179C` (desktop app, 4 phases) → `FEATURE-57BC`
-(v1.0.0 release, 4 phases).
+The sequence is a hard dependency chain: `FEATURE-2FE8` (repo skeleton — **done**) →
+`FEATURE-03A9` (licensing core library, 4 phases — **PHASE01 done**) → `FEATURE-179C` (desktop app,
+4 phases) → `FEATURE-57BC` (v1.0.0 release, 4 phases).
