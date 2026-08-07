@@ -46,6 +46,36 @@ internal static class LicensePayload
     }
 
     /// <summary>
+    /// Decodes payload bytes into a <see cref="License"/>, or <see langword="null"/> when they are not
+    /// one — the non-throwing counterpart of <see cref="Deserialize"/>.
+    /// </summary>
+    /// <param name="payload">The UTF-8 JSON bytes the envelope carried.</param>
+    /// <returns>The decoded license, or <see langword="null"/> if the bytes cannot be read as one.</returns>
+    /// <remarks>
+    /// This backs <see cref="LicenseEnvelope.ReadLicense"/>, whose whole point is that inspecting an
+    /// untrusted document is not an error path. Everything else goes through
+    /// <see cref="Deserialize"/>, because the validator needs the <see cref="JsonException"/> in order
+    /// to report the right failure reason.
+    /// </remarks>
+    /// <exception cref="ArgumentNullException"><paramref name="payload"/> is <see langword="null"/>.</exception>
+    internal static License? TryDeserialize(byte[] payload)
+    {
+        if (payload is null)
+        {
+            throw new ArgumentNullException(nameof(payload));
+        }
+
+        try
+        {
+            return JsonSerializer.Deserialize(payload, LicenseJson.Payload);
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
     /// Decodes payload bytes recovered from an envelope back into a <see cref="License"/>.
     /// </summary>
     /// <param name="payload">The UTF-8 JSON bytes the envelope carried.</param>
@@ -62,7 +92,7 @@ internal static class LicensePayload
             throw new ArgumentNullException(nameof(payload));
         }
 
-        License? license = JsonSerializer.Deserialize<License>(payload, LicenseJson.Payload);
+        License? license = JsonSerializer.Deserialize(payload, LicenseJson.Payload);
 
         return license ?? throw new JsonException("The license payload is the JSON literal 'null'.");
     }

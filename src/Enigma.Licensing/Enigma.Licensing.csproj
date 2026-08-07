@@ -10,11 +10,39 @@
          on a public member a build error under TreatWarningsAsErrors. On from bootstrap so the
          public surface can never grow undocumented members. -->
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- Trim and AOT analyzers, on the modern TFMs only (netstandard2.0 is never published AOT). They
+         are what keeps the library honest now that serialization is source-generated rather than
+         reflection-based: any code path that needs runtime reflection becomes a build error here,
+         under TreatWarningsAsErrors, instead of an InvalidOperationException in a consumer's published
+         app. IsAotCompatible implies IsTrimmable and turns on the trim/single-file/AOT analyzers. -->
+    <IsAotCompatible Condition="'$(TargetFramework)' != 'netstandard2.0'">true</IsAotCompatible>
   </PropertyGroup>
-  <!-- NuGet packaging metadata (PackageId, Version, Title, Description, PackageTags,
-       PackageReadmeFile/PackageLicenseFile + their packing ItemGroup, RepositoryUrl,
-       PackageProjectUrl, PackageReleaseNotes) is deliberately absent: it is added at release
-       time by FEATURE-57BC (PHASE01), not at bootstrap. -->
+  <!-- NuGet packaging metadata (FEATURE-57BC-PHASE01). Deliberately absent until release time, per the
+       house release workflow; this is that release. The version lives here rather than in
+       Directory.Build.props because the library and the desktop app version independently. -->
+  <PropertyGroup>
+    <PackageId>Enigma.Licensing</PackageId>
+    <Version>1.0.0</Version>
+    <Title>Enigma.Licensing — .NET License Generation &amp; Validation</Title>
+    <Description>Generate, sign and validate software licenses in .NET. Licenses are signed JSON envelopes (enigma-license/1) whose signature covers the stored payload bytes exactly — there is no canonicalization step to get wrong — and they can be signed with classical RSA (SHA-256/384/512) or post-quantum ML-DSA (FIPS 204, parameter sets 44/65/87). Key pairs are generated, stored and optionally password-encrypted (Argon2id + AES-256-GCM) in a single enigma-key/1 format. A license carries feature flags, arbitrary claims, an optional validity window and an optional device binding; validation is a verdict rather than an exception, reports the first failing check, and supports anchored wildcard product identifiers. All cryptography comes from Enigma.Core.</Description>
+    <PackageTags>license licensing signature rsa ml-dsa fips-204 post-quantum dotnet</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageLicenseFile>LICENSE.md</PackageLicenseFile>
+    <RepositoryUrl>https://github.com/enigmalibs/Enigma.Licensing</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageProjectUrl>https://github.com/enigmalibs/Enigma.Licensing</PackageProjectUrl>
+    <!-- PackageReleaseNotes is written in FEATURE-57BC-PHASE03, alongside RELEASENOTES.md itself, so the
+         two say the same thing; README.md and RELEASENOTES.md are empty until then by design. There are
+         deliberately no symbol properties (IncludeSymbols / SymbolPackageFormat / PublishRepositoryUrl /
+         EmbedUntrackedSources) and no GeneratePackageOnBuild: a release ships one .nupkg, packed
+         explicitly by the release step rather than by every local build. -->
+  </PropertyGroup>
+  <!-- What actually puts the two files in the package — PackageReadmeFile and PackageLicenseFile only
+       name them. Both live at the repository root, two levels above this project. -->
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+    <None Include="..\..\LICENSE.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
   <!-- LangVersion / Nullable / ImplicitUsings / TreatWarningsAsErrors are deliberately absent:
        they come from Directory.Build.props and must never be repeated per-project. No Version
        attributes either — versions live in Directory.Packages.props (CPM). -->

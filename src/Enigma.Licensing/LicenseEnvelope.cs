@@ -99,6 +99,39 @@ public sealed record LicenseEnvelope
     public required byte[] Signature { get; init; }
 
     /// <summary>
+    /// Reads the <see cref="License"/> out of <see cref="Payload"/>, <b>without verifying anything</b>.
+    /// </summary>
+    /// <returns>
+    /// The license the payload describes, or <see langword="null"/> when those bytes are not a readable
+    /// license.
+    /// </returns>
+    /// <remarks>
+    /// <para>
+    /// <b>The result is unverified: safe to display, unsafe to act on.</b> It says what the document
+    /// claims, not whether the claim is authentic — exactly like
+    /// <see cref="LicenseValidationResult.License"/> on a failed result, and for the same reason. Only
+    /// <see cref="ILicenseValidator"/> settles authenticity, and until it has, an identifier read from
+    /// here is a label rather than evidence. Use it to name a license you just issued, to show a
+    /// support engineer what a customer's file contains, or to fill in a form — never to decide that a
+    /// feature is unlocked.
+    /// </para>
+    /// <para>
+    /// This is also the only way to see inside an envelope: <see cref="Payload"/> is the signed bytes
+    /// and nothing else on this type interprets them. <see cref="ILicenseGenerator"/> returns the
+    /// envelope it wrote precisely so the caller can read back the identifier it issued, and this is
+    /// the method that does it — the identifier is minted during signing and exists nowhere but inside
+    /// those bytes.
+    /// </para>
+    /// <para>
+    /// It never throws for a payload it cannot read. Inspecting an untrusted document is not an error
+    /// path, and the alternative would be a <c>try</c>/<c>catch</c> around every call — the same
+    /// reasoning that makes the validator return a verdict instead of throwing. A <see langword="null"/>
+    /// here means the same thing a <see cref="LicenseFailure.InvalidFormat"/> verdict does.
+    /// </para>
+    /// </remarks>
+    public License? ReadLicense() => LicensePayload.TryDeserialize(Payload);
+
+    /// <summary>
     /// Writes this envelope to <paramref name="output"/> as indented UTF-8 JSON.
     /// </summary>
     /// <param name="output">The destination stream. It is flushed but never closed, so the caller keeps ownership.</param>
@@ -154,7 +187,7 @@ public sealed record LicenseEnvelope
         try
         {
             envelope = await JsonSerializer
-                .DeserializeAsync<LicenseEnvelope>(input, LicenseJson.Envelope, cancellationToken)
+                .DeserializeAsync(input, LicenseJson.Envelope, cancellationToken)
                 .ConfigureAwait(false);
         }
         catch (JsonException ex)

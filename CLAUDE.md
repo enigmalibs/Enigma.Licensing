@@ -21,15 +21,18 @@ doc, comment or summary that describes a planned type as if it already ships.
 hosting, theme and settings**, `PHASE02` the **keys page and the four application service seams**,
 `PHASE03` the **generate page and licence profiles**, and `PHASE04` the **validate page**. There are no
 placeholder pages left — the app generates real key pairs, signs real licences with them and reaches real
-verdicts about them. `FEATURE-57BC` (the v1.0.0 release) is what remains. Read the plan file in
-`docs/plan/` before implementing any of it; the plan is the contract.
+verdicts about them. `FEATURE-57BC` (the v1.0.0 release) is what remains, and its `PHASE01` has landed:
+the library carries its **packaging metadata**, is **trim- and AOT-safe**, and its third-party licence
+audit is on file. `PHASE02` (the usage guides) is next. Read the plan file in `docs/plan/` before
+implementing any of it; the plan is the contract.
 
-**One decision is due and deliberately outstanding:** the library is not trim/AOT-safe, because
-serialization is reflection-based. `FEATURE-03A9-PHASE04` was the point at which the model became
-complete enough to decide, and the decision was taken to defer the fix — a source-generated
-`JsonSerializerContext` covering both document formats — to `FEATURE-57BC-PHASE01`, where it can be
-judged against the released surface. See *Conventions* below. Do not let v1.0.0 ship without answering
-it.
+**The trim/AOT decision that was outstanding is answered — the fix shipped.** Serialization was
+reflection-based, which meant a consumer publishing with `PublishAot`, or with
+`JsonSerializerIsReflectionEnabledByDefault=false`, got an `InvalidOperationException` on the first
+serialize. `FEATURE-57BC-PHASE01` replaced it with two source-generated `JsonSerializerContext` classes
+and turned on `IsAotCompatible`, so the trim and AOT analyzers now police the library at build time.
+Do not reintroduce a `JsonSerializer` overload that takes bare `JsonSerializerOptions` — that is exactly
+what the analyzers reject. See *Shipped* below.
 
 ## What this is
 
@@ -354,12 +357,12 @@ profiles**: one small JSON file per saved form.
   picker happens to carry is discarded on both ends. The opposite reading compiles just as well and generates
   a support ticket every time; tests sit on both sides of the boundary, two of them against the real validator.
 - **The licence identifier is read out of the payload, because there is no other way to get it.** The
-  generator mints a ULID per call and the envelope carries it only inside the signed bytes; `LicenseEnvelope`
-  exposes `Payload` but nothing that reads a licence out of it, and `Ulid` is deliberately off the library's
-  public surface, so the page cannot mint its own. `ReadLicenseId` parses the one property with `JsonDocument`
-  and yields `null` if it cannot — the licence is on disk by then, and not being able to name it is no reason
-  to report the issue as failed. **This is a small gap in the library's public surface, flagged for
-  `FEATURE-57BC-PHASE01`.**
+  generator mints a ULID per call and the envelope carries it only inside the signed bytes, and `Ulid` is
+  deliberately off the library's public surface, so the page cannot mint its own. It calls
+  `envelope.ReadLicense()?.Id` and accepts a `null` — the licence is on disk by then, and not being able to
+  name it is no reason to report the issue as failed. (Until `FEATURE-57BC-PHASE01` there was nothing on
+  `LicenseEnvelope` that read a licence out of `Payload`, and this page hand-parsed the one property with
+  `JsonDocument`; that gap is closed and the private helper is gone.)
 - **A profile holds the form and the signing key's *path*, never the password and never the output path.**
   There is no algorithm field either: the scheme belongs to the key and was fixed when the pair was generated,
   so the field could only ever be written and not read — and could silently disagree with the key it names.
@@ -428,6 +431,61 @@ stacked cards: the verdict, the document, and the licence.
 Types in place: `LicenseVerdict`, `LicenseVerdictSeverity`, `LicenseSummary`, and a real
 `ValidateLicenseViewModel` + `ValidateLicenseView`. No new service and no new registration — the page is built
 from seams that already existed.
+
+### Package metadata, source-generated JSON & the licence audit (FEATURE-57BC-PHASE01)
+
+The library became a packable NuGet project — `Enigma.Licensing` 1.0.0, MIT, all twelve packaging
+properties plus the `README.md`/`LICENSE.md` packing `ItemGroup` — and, in the same phase, stopped needing
+runtime reflection. The plan file covered only the metadata and the audit; the two decisions `CLAUDE.md`
+had parked on this phase were surfaced at build time, confirmed, and the plan amended in place.
+
+- **Serialization is source-generated, and the analyzers enforce it.** `EnvelopeJsonContext` covers
+  `LicenseEnvelope` and `KeyEnvelope` (indented); `PayloadJsonContext` covers `License` (compact). **Two
+  contexts, not one**, because a `JsonSerializerContext` is bound to the `JsonSerializerOptions` it was
+  built with and refuses to resolve types for any other instance — so the two documented option sets
+  cannot share one. The settings both formats specify (camelCase, omit-when-null, strict everything else)
+  moved from `JsonSerializerOptions` onto `[JsonSourceGenerationOptions]` and say the same thing.
+- **`LicenseJson` hands out `JsonTypeInfo<T>`, not `JsonSerializerOptions`** — `Envelope`, `KeyFile` and
+  `Payload`. This is not cosmetic: handing `JsonSerializer` a bare options object is **not statically
+  analyzable even when the options carry a source-generated resolver**, so those overloads are attributed
+  `[RequiresUnreferencedCode]`/`[RequiresDynamicCode]` and produced 30 IL2026/IL3050 errors on the first
+  attempt. Only the typed overloads are clean. `KeyFile` is new because `KeyEnvelope` and `LicenseEnvelope`
+  had been sharing one options instance.
+- **`IsAotCompatible` is on for net8.0 and net10.0, off for netstandard2.0** (never published AOT). It
+  implies `IsTrimmable` and turns the trim/AOT/single-file analyzers on, so under `TreatWarningsAsErrors`
+  a reflection-needing code path is a **build error**. The library builds clean under it, Enigma.Core,
+  Ulid, DeviceId and `Regex` paths included. Know the limit: the analyzers see *this* assembly, so an
+  unannotated reflection-using dependency would still surface at a consumer's publish. It adds
+  `Microsoft.NET.ILLink.Tasks` as an auto-referenced build task — verified absent from the nuspec's
+  dependency groups.
+- **The contexts are the only resolver these documents have**, so the whole suite is the real proof: every
+  save, load, sign and verify in 1164 tests runs through source generation, and a document type that lost
+  its metadata would throw rather than quietly reflect. `LicenseJsonTests` pins the diagnosis, including
+  that a context answers **only** for what it was given — a context resolving an unregistered type would
+  mean the fallback had crept back in.
+- **`LicenseEnvelope.ReadLicense()` closes the public-surface gap** `FEATURE-179C-PHASE03` flagged: it
+  returns the **unverified** `License` parsed from `Payload`, or `null` when those bytes are not one, and
+  **never throws** — inspecting an untrusted document is not an error path. It is documented with exactly
+  the warning `LicenseValidationResult.License` carries: safe to display, unsafe to act on. It is backed
+  by `LicensePayload.TryDeserialize`; everything else still goes through `Deserialize`, because the
+  validator needs the `JsonException` to pick the right failure reason.
+- **Third-party licence audit — 16 shipped packages, all clear.** Fifteen are MIT. The one exception,
+  `Microsoft.NETCore.Platforms` 1.1.0 (DeviceId → Microsoft.DotNet.PlatformAbstractions → here, on
+  netstandard2.0 only), carries the legacy MICROSOFT .NET LIBRARY licence — and ships **no assembly at
+  all**, just a `runtime.json` and a zero-byte `lib/.../_._` placeholder, so nothing under it is
+  redistributed. Compile-only (PolySharp), build-task (ILLink.Tasks) and test-only packages are out of
+  scope. The full table is in `docs/done/FEATURE-57BC-PHASE01.md`.
+- **The package cannot be packed until `PHASE03`.** `dotnet pack` fails **NU5040 — the readme file is
+  empty**, because `README.md` is a zero-byte placeholder by design. The metadata was verified instead by
+  generating the nuspec directly (`dotnet msbuild -t:GenerateNuspec`). `PHASE04`'s pack-verify is the
+  first point a real pack can succeed, which is the order the phases already run in.
+- **The desktop app carries an explicit `<Version>1.0.0</Version>`**, as its own csproj comment promised
+  this phase would set. It matches the SDK default it had been inheriting, so nothing observable moved —
+  but `PHASE04`'s publish scripts read it back with `dotnet msbuild -getProperty:Version`.
+
+Types in place: `EnvelopeJsonContext`, `PayloadJsonContext` (both internal), `LicensePayload.TryDeserialize`,
+and `LicenseEnvelope.ReadLicense()` — the phase's only public-surface addition. `<PackageReleaseNotes>` is
+deliberately still absent; `PHASE03` writes it beside `RELEASENOTES.md` so the two cannot disagree.
 
 ## Architecture & conventions
 
@@ -526,7 +584,7 @@ README.md, RELEASENOTES.md           Empty — written at release time (FEATURE-
 src/Enigma.Licensing/                The library
   License.cs                         The license data — the signed payload's model
   LicenseRequest.cs                  Generator input
-  LicenseEnvelope.cs                 The enigma-license/1 document + SaveAsync/LoadAsync
+  LicenseEnvelope.cs                 The enigma-license/1 document + SaveAsync/LoadAsync/ReadLicense
   LicenseSignatureAlgorithm.cs       The six signing schemes
   ILicenseGenerator.cs               Sign a request into an envelope — interface + error contract
   LicenseGenerator.cs                Its implementation: defaulting, request validation, signing
@@ -548,8 +606,10 @@ src/Enigma.Licensing/                The library
   Internal/KeyKindIds.cs             KeyKind ↔ "public"/"private", on the AlgorithmIds pattern
   Internal/KeyMaterial.cs            `key`-field encoding per algorithm + the structural material check
   Internal/KeyMaterialCipher.cs      Argon2id → AES-256-GCM over the private material
-  Internal/LicenseJson.cs            The two JsonSerializerOptions instances (both formats share them)
-  Internal/LicensePayload.cs         License ↔ signed UTF-8 JSON bytes
+  Internal/EnvelopeJsonContext.cs    Source-gen metadata for the two documents a human opens (indented)
+  Internal/PayloadJsonContext.cs     The same for the signed payload (compact) — two, because options bind
+  Internal/LicenseJson.cs            The three JsonTypeInfo instances; never bare JsonSerializerOptions
+  Internal/LicensePayload.cs         License ↔ signed UTF-8 JSON bytes (+ TryDeserialize, behind ReadLicense)
   Internal/LicenseSignatures.cs      Sign/verify dispatch across the two Core families; fails closed
   Internal/ProductIdMatch.cs         The wildcard rule: escape, then substitute, anchored \A…\z
   Properties/AssemblyInfo.cs         InternalsVisibleTo for the test assembly
@@ -610,6 +670,7 @@ tests/Enigma.Licensing.UnitTests/    xUnit v3 test suite
     PublicSurfaceIsolationTests.cs   The reflection guard: forbidden namespaces + assembly allowlist
   DependencyInjection/               AddEnigmaLicensing() — resolution, lifetimes, TryAdd, round-trips
   Internal/                          Tests over the internal seams (needs InternalsVisibleTo)
+    LicenseJsonTests.cs              The source-gen guarantee: the resolver, the settings, and nothing else
   Keys/                              Key generation, storage & encryption + their shared fixtures
   Model/                             Tests over the records
 tests/Enigma.Licensing.Desktop.UnitTests/   xUnit v3 test suite for the app (net10.0)
@@ -659,8 +720,9 @@ There is **no CI workflow**, deliberately — consistent with every sibling Enig
   `System.Runtime.CompilerServices.Unsafe`, which the graph already closes over. DeviceId backs
   `DeviceIdentifier.Generate()`; only the **base** package is referenced (the `DeviceId.Windows` /
   `.Linux` / `.Mac` packages exist for hardware-bound components this library deliberately does not
-  use), and on netstandard2.0 alone it pulls `Microsoft.DotNet.PlatformAbstractions` 3.1.6 — a legacy
-  package worth a look at FEATURE-57BC-PHASE01's third-party licence audit.
+  use), and on netstandard2.0 alone it pulls `Microsoft.DotNet.PlatformAbstractions` 3.1.6 — legacy, but
+  MIT and .NET Foundation-authored, and cleared by `FEATURE-57BC-PHASE01`'s licence audit along with the
+  `Microsoft.NETCore.Platforms` 1.1.0 beneath it (non-MIT, and ships no assembly at all).
 - **Microsoft.Extensions.DependencyInjection.Abstractions is referenced unconditionally too** (MIT), and
   is the **only** dependency whose types are allowed on the public surface — `AddEnigmaLicensing()` takes
   and returns `IServiceCollection`. Abstractions only, never the concrete container: a library registers
@@ -668,11 +730,14 @@ There is **no CI workflow**, deliberately — consistent with every sibling Enig
   System.Text.Json it raises no NU1510 on net8.0+. The **9.x floor is deliberate** (Enigma.DataEncryption
   precedent): NuGet resolves a package to the highest floor in the graph, so a high floor here would drag
   a consumer's whole `Microsoft.Extensions.*` set forward. On netstandard2.0 alone it pulls
-  `Microsoft.Bcl.AsyncInterfaces` 9.0.18 and `System.Threading.Tasks.Extensions` 4.5.4 — both inbox on
-  net8.0+, and both for the same release-time licence audit as PlatformAbstractions.
+  `Microsoft.Bcl.AsyncInterfaces` and `System.Threading.Tasks.Extensions` — both inbox on net8.0+, both
+  MIT, and both cleared by the same audit. (Both resolve above their floors, to 10.0.10 and 4.6.3, since
+  System.Text.Json 10.0.10 asks for more on that leg.)
 - **Runtime dependencies, final for the library: Enigma.Core, Microsoft.Extensions.DependencyInjection.Abstractions,
-  Ulid and DeviceId everywhere; System.Text.Json on netstandard2.0 only.** Nothing further is expected —
-  `FEATURE-03A9` is complete.
+  Ulid and DeviceId everywhere; System.Buffers and System.Text.Json on netstandard2.0 only.** Nothing
+  further is expected — `FEATURE-03A9` is complete, and `FEATURE-57BC-PHASE01` added no package (its
+  source generator ships inside System.Text.Json / the SDK, and `IsAotCompatible`'s
+  `Microsoft.NET.ILLink.Tasks` is an auto-referenced build task that never reaches the nuspec).
 - **The desktop app's pins landed with `FEATURE-179C-PHASE01`** and are expected to be its whole set:
   `Microsoft.Extensions.Hosting` / `.Logging.Console` / `.Logging.Debug` 10.0.10, and the
   **version-coupled** group — `Avalonia`, `Avalonia.Desktop`, `Avalonia.Themes.Fluent`,
@@ -741,7 +806,7 @@ passed `TestContext.Current.CancellationToken`. `LicenseEnvelopeTests`, the `Key
 `private static CancellationToken Token => TestContext.Current.CancellationToken;`
 for this — copy that pattern rather than suppressing the rule.
 
-**Key generation is the expensive part of the suite** (most of the ~14 s run over 1134 cases — 836 in the
+**Key generation is the expensive part of the suite** (most of the ~13 s run over 1164 cases — 866 in the
 library suite, 298 in the desktop one, which costs about two seconds): ten RSA
 pairs, one at 4096 bits, plus Argon2id at 64 MiB per encrypted round-trip. Two collection fixtures exist
 so nothing generates a key it does not need to:
@@ -801,20 +866,22 @@ MTP coverage needs `Microsoft.Testing.Extensions.CodeCoverage`. Measure before t
 - **Secrets are `char[]`, and the caller owns them.** Nothing in this library modifies or clears a
   password array it is handed (the Enigma.Core convention); it clears only the copies it makes — the
   UTF-8 buffer and the derived key — in a `finally`. A test pins this.
-- **Serialization is reflection-based, so the library is not trim/AOT-safe.** A consumer publishing
-  with `PublishAot`, or with `JsonSerializerIsReflectionEnabledByDefault=false`, gets
-  `InvalidOperationException` on the first serialize. Fixing it means a source-generated
-  `JsonSerializerContext` wired into `LicenseJson`, covering the license *and* key documents. The model
-  became complete at `FEATURE-03A9-PHASE04`, which is where the decision fell due; it was **deliberately
-  deferred to `FEATURE-57BC-PHASE01`**, to be judged against the released surface rather than discovered
-  at v1.0.0. Answer it there — do not let the release slip past it.
+- **Serialization is source-generated, so the library is trim- and AOT-safe** (`FEATURE-57BC-PHASE01`).
+  Every document goes through `EnvelopeJsonContext` or `PayloadJsonContext` by way of a
+  `JsonTypeInfo<T>` from `LicenseJson`. **Never call a `JsonSerializer` overload that takes bare
+  `JsonSerializerOptions`** — those are attributed `[RequiresUnreferencedCode]`/`[RequiresDynamicCode]`,
+  and `IsAotCompatible` on the net8.0+ legs turns them into build errors. A new document type needs a
+  `[JsonSerializable]` entry on the right context and a `JsonTypeInfo` member on `LicenseJson`;
+  registering it nowhere means it throws rather than falling back to reflection, which is the point.
 - **Documentation.** Every public member carries XML docs; `GenerateDocumentationFile=true` is on
   from bootstrap, so a missing comment fails the zero-warning build. Per-category usage guides will
   live under `docs/guides/` (`FEATURE-57BC-PHASE02`).
-- **Packaging metadata** (`PackageId`, `Version`, `Description`, …) is deliberately absent from the
-  library csproj until release time (`FEATURE-57BC-PHASE01`), per the `dotnet-release` skill. The
-  library and the app version independently, in their own csproj — there is no solution-wide
-  `<Version>`.
+- **Packaging metadata** (`PackageId`, `Version`, `Description`, …) landed at release time with
+  `FEATURE-57BC-PHASE01`, per the `dotnet-release` skill — all twelve properties plus the packing
+  `ItemGroup`. `<PackageReleaseNotes>` is the one still to come (`PHASE03`, beside `RELEASENOTES.md`).
+  There are deliberately **no symbol properties** and no `GeneratePackageOnBuild`: a release ships one
+  `.nupkg`, packed explicitly. The library and the app version independently, in their own csproj —
+  there is no solution-wide `<Version>`; both read 1.0.0.
 - **Docs stay honest.** When a phase lands, update this file, `docs/roadmap.md` and the plan status
   in the same unit of work; do not leave "planned" markers on shipped code.
 
@@ -834,4 +901,5 @@ written. Commits are left to the maintainer.
 
 The sequence is a hard dependency chain: `FEATURE-2FE8` (repo skeleton — **done**) →
 `FEATURE-03A9` (licensing core library, 4 phases — **all done**) → `FEATURE-179C` (desktop app,
-4 phases — **all done**) → `FEATURE-57BC` (v1.0.0 release, 4 phases — **PHASE01 next**).
+4 phases — **all done**) → `FEATURE-57BC` (v1.0.0 release, 4 phases — `PHASE01` **done**,
+**PHASE02 next**).

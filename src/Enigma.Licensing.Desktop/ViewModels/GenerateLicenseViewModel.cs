@@ -5,7 +5,6 @@ using System.ComponentModel.DataAnnotations;
 using System.IO;
 using System.Linq;
 using System.Text;
-using System.Text.Json;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -454,7 +453,11 @@ public sealed class GenerateLicenseViewModel : ObservableValidator
                 await _busy.HideAsync();
             }
 
-            LastLicenseId = ReadLicenseId(envelope.Payload);
+            // The generator mints a ULID per call and the envelope carries it only inside the signed bytes,
+            // so this is the one thing about the licence that has to be read back out of it. A null means
+            // the payload could not be read — the licence is on disk by then, and not being able to name it
+            // is no reason to report the issue as having failed.
+            LastLicenseId = envelope.ReadLicense()?.Id;
             LastKeyId = envelope.KeyId;
             LastLicensePath = outputPath;
 
@@ -684,34 +687,6 @@ public sealed class GenerateLicenseViewModel : ObservableValidator
         string name = builder.ToString().Trim(' ', '.', '-');
 
         return name.Length == 0 ? suffix[1..] : name + suffix;
-    }
-
-    /// <summary>Reads the identifier out of the payload the generator just signed.</summary>
-    /// <param name="payload">The envelope's payload: the UTF-8 JSON of the licence.</param>
-    /// <returns>The identifier, or <see langword="null"/> if it could not be read.</returns>
-    /// <remarks>
-    /// The generator mints a ULID per call, and the envelope carries it only inside the signed bytes — so
-    /// this is the one place the application looks at a payload directly. One property is read rather than
-    /// the whole licence deserialized, and a failure yields <see langword="null"/>: the licence has already
-    /// been written by the time this runs, and not being able to name it is no reason to report the issue as
-    /// having failed.
-    /// </remarks>
-    private static string? ReadLicenseId(byte[] payload)
-    {
-        try
-        {
-            using JsonDocument document = JsonDocument.Parse(payload);
-
-            return document.RootElement.ValueKind == JsonValueKind.Object
-                && document.RootElement.TryGetProperty("id", out JsonElement id)
-                && id.ValueKind == JsonValueKind.String
-                    ? id.GetString()
-                    : null;
-        }
-        catch (JsonException)
-        {
-            return null;
-        }
     }
 
     /// <summary>The instant a licence starting on <paramref name="date"/> becomes usable: local midnight.</summary>

@@ -127,7 +127,7 @@ public sealed class KeyService : IKeyService
             Key = encodedKey,
         };
 
-        await JsonSerializer.SerializeAsync(output, envelope, LicenseJson.Envelope, cancellationToken)
+        await JsonSerializer.SerializeAsync(output, envelope, LicenseJson.KeyFile, cancellationToken)
             .ConfigureAwait(false);
     }
 
@@ -267,7 +267,7 @@ public sealed class KeyService : IKeyService
         try
         {
             envelope = await JsonSerializer
-                .DeserializeAsync<KeyEnvelope>(input, LicenseJson.Envelope, cancellationToken)
+                .DeserializeAsync(input, LicenseJson.KeyFile, cancellationToken)
                 .ConfigureAwait(false);
         }
         catch (JsonException ex)

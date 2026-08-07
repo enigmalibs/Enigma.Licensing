@@ -263,6 +263,66 @@ public sealed class LicenseEnvelopeTests
         Assert.Equal("input", exception.ParamName);
     }
 
+    /// <summary>
+    /// The one way to see inside an envelope, and what makes the generator's promise — that it hands
+    /// back the envelope so the caller can read the identifier it issued — actually keepable.
+    /// </summary>
+    [Fact]
+    public void ReadLicense_RecoversTheLicenseThePayloadDescribes()
+    {
+        License original = LicenseTestData.FullLicense();
+        LicenseEnvelope envelope = LicenseTestData.FullEnvelope() with
+        {
+            Payload = LicensePayload.Serialize(original),
+        };
+
+        License? read = envelope.ReadLicense();
+
+        Assert.NotNull(read);
+        Assert.Equal(original.Id, read.Id);
+        Assert.Equal(original.ProductId, read.ProductId);
+        Assert.Equal(original.CreatedAt, read.CreatedAt);
+        Assert.Equal(original.ValidUntil, read.ValidUntil);
+        Assert.Equal(original.Claims, read.Claims);
+        Assert.True(read.HasFeature("export"));
+    }
+
+    /// <summary>
+    /// Inspecting an untrusted document is not an error path — the same reasoning that makes the
+    /// validator return a verdict rather than throw. Bytes that are not JSON at all, and JSON that is
+    /// missing a required license field, both yield <see langword="null"/>.
+    /// </summary>
+    [Theory]
+    [InlineData("not json at all")]
+    [InlineData("null")]
+    [InlineData("[1, 2, 3]")]
+    [InlineData("{\"id\":\"01JYQ7ZK3M8X2N4P6R8T0V2W4Y\"}")]
+    public void ReadLicense_ReturnsNullForBytesThatAreNotALicense(string payload)
+    {
+        LicenseEnvelope envelope = LicenseTestData.FullEnvelope() with
+        {
+            Payload = Encoding.UTF8.GetBytes(payload),
+        };
+
+        Assert.Null(envelope.ReadLicense());
+    }
+
+    /// <summary>
+    /// The result is what the document <i>claims</i>, never evidence that the claim is authentic —
+    /// reading a license out of an envelope whose signature is a stand-in still succeeds.
+    /// </summary>
+    [Fact]
+    public void ReadLicense_VerifiesNothing()
+    {
+        LicenseEnvelope forged = LicenseTestData.FullEnvelope() with
+        {
+            Payload = LicensePayload.Serialize(LicenseTestData.MinimalLicense()),
+            Signature = [0xDE, 0xAD, 0xBE, 0xEF],
+        };
+
+        Assert.Equal("MyApp", forged.ReadLicense()?.ProductId);
+    }
+
     [Fact]
     public void With_ProducesANewInstanceAndLeavesTheOriginalIntact()
     {

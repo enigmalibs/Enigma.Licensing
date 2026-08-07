@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Text;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Enigma.Licensing.Keys;
@@ -17,10 +18,12 @@ namespace Enigma.Licensing.Desktop.UnitTests.TestDoubles;
 /// started calling another fails loudly in a test rather than quietly doing nothing.
 /// </para>
 /// <para>
-/// The envelope's payload is real JSON rather than opaque bytes, because reading the licence identifier back
-/// out of it is something the page actually does. <see cref="PayloadJson"/> is settable so a test can hand
-/// over a payload that says nothing useful and check that the issue is still reported as a success — the
-/// licence has been written by then, and not being able to name it is not a failure to write it.
+/// The envelope's payload is a real, complete licence document rather than opaque bytes, because reading the
+/// licence back out of it is something the page actually does — through
+/// <see cref="LicenseEnvelope.ReadLicense"/>, which deserializes the whole record and so needs every required
+/// field present, not just the identifier. <see cref="PayloadJson"/> is settable so a test can hand over a
+/// payload that says nothing useful and check that the issue is still reported as a success — the licence has
+/// been written by then, and not being able to name it is not a failure to write it.
 /// </para>
 /// </remarks>
 internal sealed class FakeLicenseGenerator : ILicenseGenerator
@@ -28,7 +31,10 @@ internal sealed class FakeLicenseGenerator : ILicenseGenerator
     /// <summary>Gets or sets the identifier the returned envelope's payload carries.</summary>
     internal string LicenseId { get; set; } = "01JYQ7ZK3MEXAMPLEEXAMPLE00";
 
-    /// <summary>Gets or sets the payload the returned envelope carries. Defaults to one naming <see cref="LicenseId"/>.</summary>
+    /// <summary>
+    /// Gets or sets the payload the returned envelope carries. Defaults to a complete licence naming
+    /// <see cref="LicenseId"/>.
+    /// </summary>
     internal string? PayloadJson { get; set; }
 
     /// <summary>Gets or sets the fingerprint the returned envelope is stamped with.</summary>
@@ -94,10 +100,20 @@ internal sealed class FakeLicenseGenerator : ILicenseGenerator
             Format = LicenseEnvelope.CurrentFormat,
             Algorithm = "ML-DSA-65",
             KeyId = KeyId,
-            Payload = Encoding.UTF8.GetBytes(PayloadJson ?? $"{{\"id\":\"{LicenseId}\"}}"),
+            Payload = Encoding.UTF8.GetBytes(PayloadJson ?? DefaultPayloadJson(request)),
             Signature = [0x01, 0x02, 0x03],
         };
     }
+
+    /// <summary>
+    /// The three fields a <c>License</c> requires, in the format's camelCase shape, echoing back the product
+    /// the request asked for. Fixed timestamp: nothing here should vary between runs.
+    /// </summary>
+    /// <param name="request">The request being signed.</param>
+    /// <returns>The payload JSON.</returns>
+    private string DefaultPayloadJson(LicenseRequest request) =>
+        $"{{\"id\":\"{LicenseId}\",\"createdAt\":\"2026-08-07T09:00:00+00:00\"," +
+        $"\"productId\":{JsonSerializer.Serialize(request.ProductId)}}}";
 
     /// <inheritdoc/>
     public LicenseEnvelope Generate(LicenseRequest request, LicensingKey privateKey)

@@ -15,11 +15,14 @@
          with TreatWarningsAsErrors on, a missing comment on a public member is a build error. The app is
          never packed, so this is a discipline setting rather than a packaging one. -->
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- The app's release version, set here rather than solution-wide: Directory.Build.props declares no
+         <Version> because the library and the app version independently. It happens to match the SDK
+         default the app carried until FEATURE-57BC-PHASE01, so nothing observable moves — but it is now
+         a stated fact rather than a default, which is what the settings page's about section reports,
+         what app.manifest's assemblyIdentity records, and what PHASE04's publish scripts read back with
+         `dotnet msbuild -getProperty:Version` to name the distribution zips. -->
+    <Version>1.0.0</Version>
   </PropertyGroup>
-  <!-- No <Version> here yet. Directory.Build.props deliberately declares none solution-wide (the library
-       and the app version independently), and the app's release version is set by FEATURE-57BC alongside
-       the library's packaging metadata. Until then both carry the SDK default 1.0.0, which is what the
-       settings page's about section reports and what app.manifest's assemblyIdentity records. -->
   <!-- LangVersion / Nullable / ImplicitUsings / TreatWarningsAsErrors come from Directory.Build.props;
        package versions from Directory.Packages.props (Central Package Management). -->
   <ItemGroup>
