@@ -34,4 +34,21 @@ public interface IFileDialogService
         string title,
         string suggestedFileName,
         string? suggestedStartLocation = null);
+
+    /// <summary>
+    /// Shows an open dialog for a single file and returns the chosen path.
+    /// </summary>
+    /// <param name="title">The dialog's title — what the user is choosing a file for.</param>
+    /// <param name="suggestedStartLocation">
+    /// The directory to open in, or <see langword="null"/> for the platform default. As on
+    /// <see cref="ShowSaveFileDialogAsync"/>, a path that does not exist is not an error.
+    /// </param>
+    /// <returns>
+    /// The chosen path, or <see langword="null"/> if the user cancelled — or, on the platforms where
+    /// that is possible, picked something with no local path at all. Both are the same thing to a
+    /// caller that can only work with a file name, so they are reported the same way.
+    /// </returns>
+    Task<string?> ShowOpenFileDialogAsync(
+        string title,
+        string? suggestedStartLocation = null);
 }

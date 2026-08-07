@@ -2,10 +2,17 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:sys="using:System"
+             xmlns:controls="using:Enigma.Avalonia.Desktop.Controls"
+             xmlns:editors="using:Enigma.Avalonia.Desktop.Controls.Editors"
+             xmlns:ei="https://github.com/josueclement/Enigma.Icons"
              xmlns:vm="using:Enigma.Licensing.Desktop.ViewModels"
              mc:Ignorable="d"
              x:Class="Enigma.Licensing.Desktop.Views.GenerateLicenseView"
              x:DataType="vm:GenerateLicenseViewModel">
+
+  <!-- The page reads top to bottom as the issue order: start from a profile if there is one, say what the
+       licence grants and for how long, choose the key that vouches for it, choose where it goes, and sign. -->
 
   <ScrollViewer>
     <StackPanel Classes="page">
@@ -14,9 +21,255 @@
       <TextBlock Classes="body"
                  Text="Fill in a licence, sign it with a private key and save the envelope. A profile keeps the form and the signing key's path for the next issue — never the password." />
 
-      <Border Classes="card">
-        <TextBlock Classes="hint"
-                   Text="The licence form, the features and claims editors and the licence profiles arrive with a later phase of this application." />
+      <controls:SettingsCard Header="Profile"
+                             Description="Reuse a form. Loading one fills every field below except the password."
+                             IconData="{ei:IconGeometry Bookmarks}">
+        <StackPanel Orientation="Horizontal" Spacing="8">
+          <Button Content="Load…" Command="{Binding LoadProfileCommand}" />
+          <Button Content="Save…" Command="{Binding SaveProfileCommand}" />
+        </StackPanel>
+      </controls:SettingsCard>
+
+      <controls:SettingsCardExpander Header="Licence"
+                                     Description="What the licence says, and who it is for."
+                                     IconData="{ei:IconGeometry Certificate}"
+                                     IsExpanded="True">
+        <StackPanel Spacing="12">
+
+          <editors:TextEditor Title="Product"
+                              Text="{Binding ProductId}"
+                              PlaceholderText="The product this licence unlocks…"
+                              HasValidationError="{Binding ProductIdHasError, Mode=OneWay}"
+                              ValidationErrorMessage="{Binding ProductIdErrorMessage, Mode=OneWay}" />
+
+          <TextBlock Classes="hint"
+                     Text="A * anywhere in it matches a range — &quot;Acme Suite 2.*&quot; covers 2.0 and 2.17 alike. Everything else, including a dot, is matched literally." />
+
+          <editors:TextEditor Title="Owner"
+                              Text="{Binding Owner}"
+                              PlaceholderText="Who the licence is issued to (optional)" />
+
+          <editors:TextEditor Title="Device"
+                              Text="{Binding DeviceId}"
+                              PlaceholderText="Leave empty for a licence that runs anywhere">
+            <editors:TextEditor.ActionContent>
+              <Button Content="This machine"
+                      Command="{Binding UseThisMachineCommand}"
+                      Padding="6,2"
+                      FontSize="12"
+                      ToolTip.Tip="Fill this in with the identifier of the machine you are on" />
+            </editors:TextEditor.ActionContent>
+          </editors:TextEditor>
+
+          <TextBlock Classes="hint"
+                     Text="A device identifier is compared character for character, so it only ever locks a licence to the machine that produced it. It is best-effort: a major operating-system upgrade changes it." />
+
+        </StackPanel>
+      </controls:SettingsCardExpander>
+
+      <controls:SettingsCardExpander Header="Validity"
+                                     Description="When the licence starts and stops working. Both are optional."
+                                     IconData="{ei:IconGeometry CalendarBlank}"
+                                     IsExpanded="True">
+        <StackPanel Spacing="12">
+
+          <StackPanel Spacing="6">
+            <TextBlock Classes="h2" Text="Valid from" />
+            <CalendarDatePicker SelectedDate="{Binding ValidFromDate, Mode=TwoWay}"
+                                PlaceholderText="Immediately"
+                                HorizontalAlignment="Stretch" />
+          </StackPanel>
+
+          <StackPanel Spacing="6">
+            <TextBlock Classes="h2" Text="Valid until" />
+            <CalendarDatePicker SelectedDate="{Binding ValidUntilDate, Mode=TwoWay}"
+                                PlaceholderText="Never expires"
+                                HorizontalAlignment="Stretch" />
+          </StackPanel>
+
+          <TextBlock Classes="hint"
+                     Text="The last day is included: a licence valid until the 31st still works on the 31st and stops at midnight. Clear either field to leave that end of the window open." />
+
+          <TextBlock Classes="hint"
+                     Foreground="{DynamicResource EnigmaErrorBrush}"
+                     IsVisible="{Binding HasWindowError}"
+                     Text="{Binding WindowErrorMessage}" />
+
+        </StackPanel>
+      </controls:SettingsCardExpander>
+
+      <controls:SettingsCardExpander Header="Features"
+                                     Description="The optional feature flags this licence unlocks."
+                                     IconData="{ei:IconGeometry ListChecks}">
+        <StackPanel Spacing="12">
+
+          <editors:TextEditor Title="Add a feature"
+                              Text="{Binding NewFeature}"
+                              PlaceholderText="A flag the application will ask about…">
+            <editors:TextEditor.ActionContent>
+              <Button Content="Add"
+                      Command="{Binding AddFeatureCommand}"
+                      Padding="6,2"
+                      FontSize="12" />
+            </editors:TextEditor.ActionContent>
+          </editors:TextEditor>
+
+          <ItemsControl ItemsSource="{Binding Features}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="sys:String">
+                <Grid ColumnDefinitions="*,Auto" Margin="0,2">
+                  <SelectableTextBlock Classes="value mono" Text="{Binding}" VerticalAlignment="Center" />
+                  <Button Grid.Column="1"
+                          Padding="6,3"
+                          ToolTip.Tip="Remove this feature"
+                          Command="{Binding $parent[ItemsControl].((vm:GenerateLicenseViewModel)DataContext).RemoveFeatureCommand}"
+                          CommandParameter="{Binding}">
+                    <PathIcon Data="{ei:IconGeometry Trash}" Width="12" Height="12" />
+                  </Button>
+                </Grid>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+
+          <TextBlock Classes="hint"
+                     Text="Flags are compared character for character by the application that reads the licence, so spelling one differently here grants a different feature." />
+
+        </StackPanel>
+      </controls:SettingsCardExpander>
+
+      <controls:SettingsCardExpander Header="Claims"
+                                     Description="Extra key/value data the licence carries — seat counts, tiers, references."
+                                     IconData="{ei:IconGeometry Rows}">
+        <StackPanel Spacing="12">
+
+          <Grid ColumnDefinitions="*,12,*">
+            <editors:TextEditor Title="Name" Text="{Binding NewClaimKey}" PlaceholderText="seats" />
+            <editors:TextEditor Grid.Column="2"
+                                Title="Value"
+                                Text="{Binding NewClaimValue}"
+                                PlaceholderText="25">
+              <editors:TextEditor.ActionContent>
+                <Button Content="Add"
+                        Command="{Binding AddClaimCommand}"
+                        Padding="6,2"
+                        FontSize="12" />
+              </editors:TextEditor.ActionContent>
+            </editors:TextEditor>
+          </Grid>
+
+          <ItemsControl ItemsSource="{Binding Claims}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:LicenseClaimEntry">
+                <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,2">
+                  <SelectableTextBlock Classes="field mono" Text="{Binding Key}" VerticalAlignment="Center" />
+                  <SelectableTextBlock Grid.Column="1"
+                                       Classes="value"
+                                       Text="{Binding Value}"
+                                       VerticalAlignment="Center" />
+                  <Button Grid.Column="2"
+                          Padding="6,3"
+                          ToolTip.Tip="Remove this claim"
+                          Command="{Binding $parent[ItemsControl].((vm:GenerateLicenseViewModel)DataContext).RemoveClaimCommand}"
+                          CommandParameter="{Binding}">
+                    <PathIcon Data="{ei:IconGeometry Trash}" Width="12" Height="12" />
+                  </Button>
+                </Grid>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+
+          <TextBlock Classes="hint"
+                     Text="Validation ignores claims entirely; they are there for the application to read once a licence has passed. A claim is replaced by removing it and adding it again, which is what keeps two rows from ever sharing a name." />
+
+        </StackPanel>
+      </controls:SettingsCardExpander>
+
+      <controls:SettingsCardExpander Header="Signing"
+                                     Description="The private key that vouches for this licence."
+                                     IconData="{ei:IconGeometry PenNib}"
+                                     IsExpanded="True">
+        <StackPanel Spacing="12">
+
+          <editors:TextEditor Title="Private key file"
+                              Text="{Binding PrivateKeyPath}"
+                              PlaceholderText="The signing half of a pair…"
+                              HasValidationError="{Binding PrivateKeyPathHasError, Mode=OneWay}"
+                              ValidationErrorMessage="Required">
+            <editors:TextEditor.ActionContent>
+              <Button Content="Browse…"
+                      Command="{Binding BrowsePrivateKeyPathCommand}"
+                      Padding="6,2"
+                      FontSize="12" />
+            </editors:TextEditor.ActionContent>
+          </editors:TextEditor>
+
+          <editors:TextEditor Title="Password"
+                              Text="{Binding PrivateKeyPassword}"
+                              PasswordChar="&#x2022;"
+                              PlaceholderText="Leave empty if the key is not encrypted" />
+
+          <TextBlock Classes="hint"
+                     Text="The key decides the signature scheme — it was fixed when the pair was generated, so there is nothing to choose here. The password is used for this one signing and then wiped." />
+
+        </StackPanel>
+      </controls:SettingsCardExpander>
+
+      <controls:SettingsCardExpander Header="Output file"
+                                     Description="Where the signed licence is written. An existing file is overwritten."
+                                     IconData="{ei:IconGeometry FloppyDisk}"
+                                     IsExpanded="True">
+        <editors:TextEditor Title="Licence file"
+                            Text="{Binding OutputPath}"
+                            PlaceholderText="Where the licence goes…"
+                            HasValidationError="{Binding OutputPathHasError, Mode=OneWay}"
+                            ValidationErrorMessage="Required">
+          <editors:TextEditor.ActionContent>
+            <Button Content="Browse…"
+                    Command="{Binding BrowseOutputPathCommand}"
+                    Padding="6,2"
+                    FontSize="12" />
+          </editors:TextEditor.ActionContent>
+        </editors:TextEditor>
+      </controls:SettingsCardExpander>
+
+      <Button Classes="accent"
+              Content="Generate the licence"
+              Command="{Binding GenerateLicenseCommand}"
+              HorizontalAlignment="Right" />
+
+      <!-- As on the keys page, the result outlives the notification: the licence identifier is what a support
+           conversation is about months later, and a banner that has faded cannot be copied from. -->
+      <Border Classes="card" IsVisible="{Binding HasResult}">
+        <StackPanel Spacing="8">
+
+          <TextBlock Classes="h2" Text="Last licence generated" />
+
+          <TextBlock Classes="field" Text="Identifier" />
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <SelectableTextBlock Classes="value mono"
+                                 Text="{Binding LastLicenseId}"
+                                 VerticalAlignment="Center" />
+            <Button Command="{Binding CopyLicenseIdCommand}"
+                    Padding="8,3"
+                    FontSize="12"
+                    ToolTip.Tip="Copy the licence identifier to the clipboard">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <PathIcon Data="{ei:IconGeometry Copy}" Width="12" Height="12" />
+                <TextBlock Text="Copy" />
+              </StackPanel>
+            </Button>
+          </StackPanel>
+
+          <TextBlock Classes="field" Text="Signed with" />
+          <SelectableTextBlock Classes="value mono" Text="{Binding LastKeyId}" />
+
+          <TextBlock Classes="field" Text="Written to" />
+          <SelectableTextBlock Classes="value" Text="{Binding LastLicensePath}" />
+
+          <TextBlock Classes="hint"
+                     Text="The identifier is a ULID, minted at signing and sortable by issue time. It is inside the signed bytes, so it cannot be changed without breaking the signature." />
+
+        </StackPanel>
       </Border>
 
     </StackPanel>

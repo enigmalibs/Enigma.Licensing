@@ -1,6 +1,7 @@
 using System;
 using Enigma.Avalonia.Desktop.Services;
 using Enigma.Licensing.Desktop.Hosting;
+using Enigma.Licensing.Desktop.Models;
 using Enigma.Licensing.Desktop.Settings;
 using Enigma.Licensing.Desktop.ViewModels;
 using Enigma.Licensing.Desktop.Views;
@@ -96,6 +97,7 @@ public sealed class ServiceCollectionExtensionsTests
     [Theory]
     [InlineData(typeof(IAppSettingsStore), ServiceLifetime.Singleton)]
     [InlineData(typeof(AppTheming), ServiceLifetime.Singleton)]
+    [InlineData(typeof(ILicenseProfileStore), ServiceLifetime.Singleton)]
     [InlineData(typeof(AppFileDialogs), ServiceLifetime.Singleton)]
     [InlineData(typeof(AppNotifications), ServiceLifetime.Singleton)]
     [InlineData(typeof(AppBusyOverlay), ServiceLifetime.Singleton)]
@@ -173,6 +175,7 @@ public sealed class ServiceCollectionExtensionsTests
 
         Assert.NotNull(provider.GetRequiredService<IAppSettingsStore>());
         Assert.NotNull(provider.GetRequiredService<AppTheming>());
+        Assert.NotNull(provider.GetRequiredService<ILicenseProfileStore>());
     }
 
     /// <summary>

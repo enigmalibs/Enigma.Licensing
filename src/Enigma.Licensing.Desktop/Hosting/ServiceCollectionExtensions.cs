@@ -1,3 +1,4 @@
+using Enigma.Licensing.Desktop.Models;
 using Enigma.Licensing.Desktop.Resources;
 using Enigma.Licensing.Desktop.Services;
 using Enigma.Licensing.Desktop.Settings;
@@ -59,6 +60,10 @@ public static class ServiceCollectionExtensions
                 provider.GetRequiredService<ILogger<AppSettingsStore>>(),
                 AppSettingsStore.DefaultFilePath));
             services.AddSingleton<IThemeService, ThemeService>();
+
+            // The generate page's reusable forms. One instance serves every path the user picks — the store
+            // holds no state and caches nothing, so a profile is read when it is loaded and not before.
+            services.AddSingleton<ILicenseProfileStore, LicenseProfileStore>();
 
             // The application's own seams over the control library's hosts and over Avalonia's clipboard.
             // Each one exists so a page can ask for a file, report an outcome, block the window or copy a

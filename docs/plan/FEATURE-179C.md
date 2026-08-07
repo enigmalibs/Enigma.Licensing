@@ -103,7 +103,7 @@ Branch: `feature/feature-179c-phase02-keys-page`
 
 Acceptance: build/tests green; a key pair generated in the app loads back through the library.
 
-## PHASE03 — Generate page & license profiles — **TODO**
+## PHASE03 — Generate page & license profiles — **DONE**
 
 Branch: `feature/feature-179c-phase03-generate-page`
 
@@ -114,8 +114,10 @@ Branch: `feature/feature-179c-phase03-generate-page`
    picker + password field, generate & save via `ILicenseGenerator` (suggested name
    `<product>.license.json`).
 2. **License profiles** (predecessor parity): `Models/LicenseProfile` — form fields + signing-key
-   *path* + algorithm, **never the password**; save/load as `.json` via file dialogs; loading
-   prefills the form.
+   *path*, **never the password**; save/load as `.json` via file dialogs; loading prefills the form.
+   *(Amended during PHASE03: the design line above said "+ algorithm". Dropped — `ILicenseGenerator`
+   takes no algorithm, since the private key's own scheme decides it, so a profile field would be
+   written and never read, and could silently disagree with the key file it names.)*
 3. Validation UX: `ObservableValidator` annotations; generate command disabled until valid;
    InfoBar success (with license id) / error.
 4. VM tests: request mapping (form → `LicenseRequest`, empty-optional handling), window-order

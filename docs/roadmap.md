@@ -11,7 +11,7 @@
 | FEATURE-179C | Desktop application                            | IN PROGRESS | docs/plan/FEATURE-179C.md |
 | - PHASE01    | App shell, hosting, theme & settings           | DONE        | (in FEATURE-179C.md)      |
 | - PHASE02    | Keys page                                      | DONE        | (in FEATURE-179C.md)      |
-| - PHASE03    | Generate page & license profiles               | TODO        | (in FEATURE-179C.md)      |
+| - PHASE03    | Generate page & license profiles               | DONE        | (in FEATURE-179C.md)      |
 | - PHASE04    | Validate page                                  | TODO        | (in FEATURE-179C.md)      |
 | FEATURE-57BC | First release (v1.0.0)                         | TODO        | docs/plan/FEATURE-57BC.md |
 | - PHASE01    | Package metadata & third-party license audit   | TODO        | (in FEATURE-57BC.md)      |

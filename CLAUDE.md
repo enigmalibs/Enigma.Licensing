@@ -18,10 +18,11 @@ Everything in *Architecture & conventions* below now describes **code, not desig
 doc, comment or summary that describes a planned type as if it already ships.
 
 `FEATURE-179C` (the Avalonia desktop app) is **in progress**: `PHASE01` shipped the **app shell,
-hosting, theme and settings**, and `PHASE02` shipped the **keys page and the four application service
-seams** — the app now generates and writes real key pairs. The Generate and Validate pages remain
-deliberate placeholders, filled by `PHASE03` and `PHASE04` in that order, and then `FEATURE-57BC` is the
-v1.0.0 release. Read the plan file in `docs/plan/` before implementing any of it; the plan is the contract.
+hosting, theme and settings**, `PHASE02` shipped the **keys page and the four application service
+seams**, and `PHASE03` shipped the **generate page and licence profiles** — the app now generates real key
+pairs and signs real licences with them. The Validate page remains the one deliberate placeholder, filled by
+`PHASE04`, and then `FEATURE-57BC` is the v1.0.0 release. Read the plan file in `docs/plan/` before
+implementing any of it; the plan is the contract.
 
 **One decision is due and deliberately outstanding:** the library is not trim/AOT-safe, because
 serialization is reflection-based. `FEATURE-03A9-PHASE04` was the point at which the model became
@@ -36,7 +37,7 @@ it.
 and validates them, signing with RSA or post-quantum ML-DSA keys. All cryptography comes from
 [Enigma.Core](https://www.nuget.org/packages/Enigma.Core) 1.1.0. A companion Avalonia desktop app
 (`src/Enigma.Licensing.Desktop`, `FEATURE-179C`) gives the issuer a UI for the same operations; its
-shell and its keys page ship, and the other two workflow pages are being filled in phase by phase.
+shell, its keys page and its generate page ship, and the validate page is filled by the last phase.
 
 It is the successor to **Enigma.LicenseManager** (v1.2.0, which stays on NuGet for legacy
 consumers). It is a **clean break**: the license and key formats are new, and there is deliberately
@@ -339,6 +340,52 @@ Types in place: `IFileDialogService`/`FileDialogService`, `INotificationService`
 `SignatureAlgorithmOption`, and a real `GenerateKeysViewModel` + `GenerateKeysView`. Interfaces public,
 implementations `internal sealed`, all four registered `AddSingleton` by `AddEnigmaLicensingDesktop()`.
 
+### Generate page & licence profiles (FEATURE-179C-PHASE03)
+
+The second placeholder page made real, and the one the issuer lives in. It takes a product identifier, an
+owner, a device (with a **This machine** button over `DeviceIdentifier.Generate()`), an optional validity
+window, a feature list and a claims list, then a private key file and its password, and signs through
+`ILicenseGenerator.GenerateAndSaveAsync` on a background thread behind the overlay. Plus **licence
+profiles**: one small JSON file per saved form.
+
+- **The chosen end date is *included* in the window.** `ValidUntil` is the first instant a licence is no
+  longer usable, so the picker's day becomes midnight at the **end** of it — a licence valid until the 31st
+  works all day on the 31st. `ValidFrom` is local midnight at the start of its day, and the time of day a
+  picker happens to carry is discarded on both ends. The opposite reading compiles just as well and generates
+  a support ticket every time; tests sit on both sides of the boundary, two of them against the real validator.
+- **The licence identifier is read out of the payload, because there is no other way to get it.** The
+  generator mints a ULID per call and the envelope carries it only inside the signed bytes; `LicenseEnvelope`
+  exposes `Payload` but nothing that reads a licence out of it, and `Ulid` is deliberately off the library's
+  public surface, so the page cannot mint its own. `ReadLicenseId` parses the one property with `JsonDocument`
+  and yields `null` if it cannot — the licence is on disk by then, and not being able to name it is no reason
+  to report the issue as failed. **This is a small gap in the library's public surface, flagged for
+  `FEATURE-57BC-PHASE01`.**
+- **A profile holds the form and the signing key's *path*, never the password and never the output path.**
+  There is no algorithm field either: the scheme belongs to the key and was fixed when the pair was generated,
+  so the field could only ever be written and not read — and could silently disagree with the key it names.
+  (The plan's design line said otherwise; it was amended in place with the reason.) Loading a profile also
+  clears the password field, since the profile has just named a possibly different key.
+- **`ILicenseProfileStore` throws where `IAppSettingsStore` swallows.** The preference file is the app's own
+  and nobody asked for it; a profile is a file the user picked from a dialog and is watching for the form to
+  fill, so a file that is not a profile is reported on the info bar. Both stores are right — they answer to
+  different owners.
+- **Claims are add-and-remove, never edit-in-place.** `LicenseClaimEntry` is an immutable record and the add
+  command refuses a name already present, which makes a duplicate key structurally impossible rather than
+  merely unlikely — two editable rows sharing a name would collapse into one claim on the way into the licence.
+- **The generate button is *live* for a missing field and *disabled* for a contradictory window.** PHASE02's
+  rule, applied: a disabled button explains nothing, so an unfilled field is flagged when the button is
+  pressed, while a window ending before it starts disables the command and says why under the dates — the
+  same shape as the keys page's password confirmation. `ObservableValidator` annotations drive the product
+  field's error text.
+- **`CalendarDatePicker`, not `DatePicker`**: the dates are individually optional and must be clearable, and
+  `DatePicker` offers no way to unset a value once one is chosen.
+- **`IFileDialogService` gained `ShowOpenFileDialogAsync`** — PHASE02 needed only saves. It returns one path,
+  and reports a cancellation and a pick with no local path alike, since this app reads documents by path.
+
+Types in place: `LicenseProfile` + `LicenseProfile.CurrentFormatVersion`, `ILicenseProfileStore` /
+`LicenseProfileStore` (registered `AddSingleton`), `LicenseClaimEntry`, and a real `GenerateLicenseViewModel`
++ `GenerateLicenseView`.
+
 ## Architecture & conventions
 
 These hold across the whole library, and everything here **ships** — `FEATURE-03A9` is complete, so no
@@ -480,8 +527,11 @@ src/Enigma.Licensing.Desktop/        The Avalonia issuer app (net10.0)
   Resources/AppInfo.cs               Title, project URL, app & library versions read from the assemblies
   Services/IThemeService.cs          Repaint the app — the seam that keeps Avalonia out of the ViewModels
   Services/ThemeService.cs           The only place that assigns RequestedThemeVariant
-  Services/IFileDialogService.cs     Ask where to write a document — one string in, one path or null out
+  Services/IFileDialogService.cs     Ask where to write a document, or which one to open — paths, not handles
   Services/FileDialogService.cs      Over the library's picker; every document this app writes is JSON
+  Models/LicenseProfile.cs           A saved generate-page form + its formatVersion; no password, no algorithm
+  Models/ILicenseProfileStore.cs     Load/Save — and unlike the settings store, these report what went wrong
+  Models/LicenseProfileStore.cs      One JSON file per profile, camel-cased, indented, nulls omitted
   Services/INotificationService.cs   Report an outcome: success or error
   Services/NotificationService.cs    Over the info bar — and deliberately does NOT await its dismissal
   Services/IBusyOverlayService.cs    Block the app while something long runs; always hide in a finally
@@ -496,13 +546,14 @@ src/Enigma.Licensing.Desktop/        The Avalonia issuer app (net10.0)
   ViewModels/ThemeOption.cs          One appearance choice: an AppTheme and the words offering it
   ViewModels/SettingsViewModel.cs    Apply-and-persist exactly once, plus the about section
   ViewModels/SignatureAlgorithmOption.cs   One picker entry: scheme, wire label, description, is-RSA
+  ViewModels/LicenseClaimEntry.cs          One key/value claim row — immutable, so no two can share a name
   ViewModels/GenerateKeysViewModel.cs      The keys page: pickers, password, paths, generate, fingerprint
-  ViewModels/GenerateLicenseViewModel.cs   placeholder — filled by FEATURE-179C-PHASE03
+  ViewModels/GenerateLicenseViewModel.cs   The generate page: the form, the lists, profiles, sign, result
   ViewModels/ValidateLicenseViewModel.cs   placeholder — filled by FEATURE-179C-PHASE04
   Views/MainWindow.axaml(.cs)        NavigationView + the three service hosts, last in the root Panel
   Views/SettingsView.axaml(.cs)      Appearance SettingsCard + the About expander
   Views/GenerateKeysView.axaml(.cs)        Three SettingsCardExpanders, the accent button, the result card
-  Views/GenerateLicenseView.axaml(.cs)     placeholder page
+  Views/GenerateLicenseView.axaml(.cs)     A profile SettingsCard + six expanders, the button, the result card
   Views/ValidateLicenseView.axaml(.cs)     placeholder page
 tests/Enigma.Licensing.UnitTests/    xUnit v3 test suite
   SmokeTest.cs                       Toolchain smoke test
@@ -518,8 +569,9 @@ tests/Enigma.Licensing.UnitTests/    xUnit v3 test suite
 tests/Enigma.Licensing.Desktop.UnitTests/   xUnit v3 test suite for the app (net10.0)
   Hosting/                           The container wiring: what is registered, and with which lifetime
   Settings/                          The preference file and every way it can be useless
+  Models/                            The profile file: its shape on disk, and every way one can be unreadable
   Services/                          NotificationService's timing, BusyOverlayService's card (needs friend access)
-  ViewModels/                        The rail, the appearance selector, the keys page + its real round-trip
+  ViewModels/                        The rail, the appearance selector, and the two real pages + their round-trips
   Resources/                         AppInfo's shape (a version, no build metadata, an https project URL)
   TestDoubles/                       The app's seams and the library ones beneath them, plus RecordingLogger
 docs/roadmap.md                      Work-item registry
@@ -638,12 +690,12 @@ a platform, and nothing in the suite does any of the three.
 The xunit.v3 analyzers run at warning level, so under `TreatWarningsAsErrors` **they are build
 errors**. The one that bites constantly is `xUnit1051`: any call taking a `CancellationToken` must be
 passed `TestContext.Current.CancellationToken`. `LicenseEnvelopeTests`, the `Keys/` and `Api/` suites,
-`DependencyInjection/` and the desktop suite's `GenerateKeysRoundTripTests` each keep a
+`DependencyInjection/` and the desktop suite's two round-trip suites plus `Models/` each keep a
 `private static CancellationToken Token => TestContext.Current.CancellationToken;`
 for this — copy that pattern rather than suppressing the rule.
 
-**Key generation is the expensive part of the suite** (most of the ~14 s run over 976 cases — 836 in the
-library suite, 140 in the desktop one, which costs under two seconds): ten RSA
+**Key generation is the expensive part of the suite** (most of the ~13 s run over 1049 cases — 836 in the
+library suite, 213 in the desktop one, which costs about two seconds): ten RSA
 pairs, one at 4096 bits, plus Argon2id at 64 MiB per encrypted round-trip. Two collection fixtures exist
 so nothing generates a key it does not need to:
 
@@ -655,8 +707,9 @@ so nothing generates a key it does not need to:
 
 Generate outside a fixture only when generation is what the test is about. The **desktop** suite has no
 fixture and needs none: it generates ML-DSA-44 pairs, the cheapest the library makes, and only where a real
-`LicensingKeyPair` is unavoidable — the type's constructor is internal to the library, so a fake key service
-has to be handed one rather than invent it.
+key is unavoidable — a real `LicensingKeyPair` (the type's constructor is internal to the library, so a fake
+key service has to be handed one rather than invent it) or a real key *file* for the generate page to sign
+with.
 
 ### Two ways this build goes red without anyone touching the repo
 
@@ -731,4 +784,4 @@ written. Commits are left to the maintainer.
 
 The sequence is a hard dependency chain: `FEATURE-2FE8` (repo skeleton — **done**) →
 `FEATURE-03A9` (licensing core library, 4 phases — **all done**) → `FEATURE-179C` (desktop app,
-4 phases — **PHASE01–02 done, PHASE03 next**) → `FEATURE-57BC` (v1.0.0 release, 4 phases).
+4 phases — **PHASE01–03 done, PHASE04 next**) → `FEATURE-57BC` (v1.0.0 release, 4 phases).

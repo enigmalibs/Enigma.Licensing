@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Avalonia.Platform.Storage;
 using Enigma.Avalonia.Desktop.Services;
@@ -64,4 +65,22 @@ internal sealed class FileDialogService : IFileDialogService
             defaultExtension: "json",
             showOverwritePrompt: true,
             fileTypeChoices: JsonDocuments);
+
+    /// <inheritdoc/>
+    /// <remarks>
+    /// The library's extension overload projects the selection through <c>TryGetLocalPath()</c> and drops
+    /// whatever has none, so the sequence it returns can be empty even though the user picked something.
+    /// That is why an empty result and a cancellation are reported alike: this application reads its
+    /// documents by path, and a handle it cannot name is a file it cannot open.
+    /// </remarks>
+    public async Task<string?> ShowOpenFileDialogAsync(string title, string? suggestedStartLocation = null)
+    {
+        IEnumerable<string> paths = await _dialogs.ShowOpenFileDialogAsync(
+            title: title,
+            allowMultiple: false,
+            suggestedStartLocation: suggestedStartLocation,
+            fileTypeFilter: JsonDocuments);
+
+        return paths.FirstOrDefault();
+    }
 }
