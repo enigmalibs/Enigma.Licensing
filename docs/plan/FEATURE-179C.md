@@ -87,7 +87,7 @@ Acceptance: solution builds zero-warning (check AVLN counts manually — XAML wa
 TreatWarningsAsErrors); tests green; app launches with themed empty pages and working theme toggle
 (manual smoke, noted in completion doc).
 
-## PHASE02 — Keys page — **TODO**
+## PHASE02 — Keys page — **DONE**
 
 Branch: `feature/feature-179c-phase02-keys-page`
 

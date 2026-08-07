@@ -10,7 +10,7 @@
 | - PHASE04    | DI registration, API polish & XML docs         | DONE        | (in FEATURE-03A9.md)      |
 | FEATURE-179C | Desktop application                            | IN PROGRESS | docs/plan/FEATURE-179C.md |
 | - PHASE01    | App shell, hosting, theme & settings           | DONE        | (in FEATURE-179C.md)      |
-| - PHASE02    | Keys page                                      | TODO        | (in FEATURE-179C.md)      |
+| - PHASE02    | Keys page                                      | DONE        | (in FEATURE-179C.md)      |
 | - PHASE03    | Generate page & license profiles               | TODO        | (in FEATURE-179C.md)      |
 | - PHASE04    | Validate page                                  | TODO        | (in FEATURE-179C.md)      |
 | FEATURE-57BC | First release (v1.0.0)                         | TODO        | docs/plan/FEATURE-57BC.md |

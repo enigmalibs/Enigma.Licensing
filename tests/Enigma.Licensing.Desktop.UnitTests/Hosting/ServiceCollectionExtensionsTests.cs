@@ -6,6 +6,10 @@ using Enigma.Licensing.Desktop.ViewModels;
 using Enigma.Licensing.Desktop.Views;
 using Enigma.Licensing.Keys;
 using Microsoft.Extensions.DependencyInjection;
+using AppBusyOverlay = Enigma.Licensing.Desktop.Services.IBusyOverlayService;
+using AppClipboard = Enigma.Licensing.Desktop.Services.IClipboardService;
+using AppFileDialogs = Enigma.Licensing.Desktop.Services.IFileDialogService;
+using AppNotifications = Enigma.Licensing.Desktop.Services.INotificationService;
 using AppTheming = Enigma.Licensing.Desktop.Services.IThemeService;
 
 namespace Enigma.Licensing.Desktop.UnitTests.Hosting;
@@ -18,10 +22,9 @@ namespace Enigma.Licensing.Desktop.UnitTests.Hosting;
 /// </summary>
 /// <remarks>
 /// <para>
-/// The application's own theme service is reached through an alias so that a bare name in this file is
-/// always the control library's. The two <c>Services</c> namespaces do not yet collide, but they will as
-/// soon as this app wraps the library's <c>IFileDialogService</c>, and the alias keeps that from becoming a
-/// rewrite.
+/// The application's own services are reached through aliases so that a bare name in this file is always the
+/// control library's. The two <c>Services</c> namespaces now do collide — this app wraps the library's
+/// <c>IFileDialogService</c> behind one of its own — which is exactly what the aliases were put here for.
 /// </para>
 /// <para>
 /// Registrations are checked as descriptors, and only the services that need no windowing platform are
@@ -93,6 +96,10 @@ public sealed class ServiceCollectionExtensionsTests
     [Theory]
     [InlineData(typeof(IAppSettingsStore), ServiceLifetime.Singleton)]
     [InlineData(typeof(AppTheming), ServiceLifetime.Singleton)]
+    [InlineData(typeof(AppFileDialogs), ServiceLifetime.Singleton)]
+    [InlineData(typeof(AppNotifications), ServiceLifetime.Singleton)]
+    [InlineData(typeof(AppBusyOverlay), ServiceLifetime.Singleton)]
+    [InlineData(typeof(AppClipboard), ServiceLifetime.Singleton)]
     [InlineData(typeof(MainWindow), ServiceLifetime.Singleton)]
     [InlineData(typeof(MainWindowViewModel), ServiceLifetime.Singleton)]
     public void AddEnigmaLicensingDesktop_RegistersTheShellsService_WithTheRightLifetime(Type service, ServiceLifetime lifetime)
@@ -166,6 +173,22 @@ public sealed class ServiceCollectionExtensionsTests
 
         Assert.NotNull(provider.GetRequiredService<IAppSettingsStore>());
         Assert.NotNull(provider.GetRequiredService<AppTheming>());
+    }
+
+    /// <summary>
+    /// The application's own seams over the library's hosts. Resolving them is the assertion: each wraps a
+    /// control-library service that has to be registered for the constructor to be satisfiable at all, so a
+    /// wrapper added without its dependency fails here rather than the first time a user clicks a button.
+    /// </summary>
+    [Fact]
+    public void ThePlatformSeams_AreResolvable()
+    {
+        using ServiceProvider provider = Build();
+
+        Assert.NotNull(provider.GetRequiredService<AppFileDialogs>());
+        Assert.NotNull(provider.GetRequiredService<AppNotifications>());
+        Assert.NotNull(provider.GetRequiredService<AppBusyOverlay>());
+        Assert.NotNull(provider.GetRequiredService<AppClipboard>());
     }
 
     [Fact]

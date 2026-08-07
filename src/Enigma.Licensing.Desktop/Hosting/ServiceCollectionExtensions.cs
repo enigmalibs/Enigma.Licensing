@@ -60,6 +60,15 @@ public static class ServiceCollectionExtensions
                 AppSettingsStore.DefaultFilePath));
             services.AddSingleton<IThemeService, ThemeService>();
 
+            // The application's own seams over the control library's hosts and over Avalonia's clipboard.
+            // Each one exists so a page can ask for a file, report an outcome, block the window or copy a
+            // value without naming a framework type — which is also what makes every one of those steps
+            // assertable in a test process with no windowing platform.
+            services.AddSingleton<IFileDialogService, FileDialogService>();
+            services.AddSingleton<INotificationService, NotificationService>();
+            services.AddSingleton<IBusyOverlayService, BusyOverlayService>();
+            services.AddSingleton<IClipboardService, ClipboardService>();
+
             // Pages: the view fresh each time, the ViewModel kept.
             services.AddTransient<GenerateKeysView>();
             services.AddTransient<GenerateLicenseView>();

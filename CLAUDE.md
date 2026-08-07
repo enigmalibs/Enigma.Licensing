@@ -18,10 +18,10 @@ Everything in *Architecture & conventions* below now describes **code, not desig
 doc, comment or summary that describes a planned type as if it already ships.
 
 `FEATURE-179C` (the Avalonia desktop app) is **in progress**: `PHASE01` shipped the **app shell,
-hosting, theme and settings** — the app runs, navigates and remembers its colour variant, with the Keys,
-Generate and Validate pages as deliberate placeholders. `PHASE02`–`PHASE04` fill those three in, in that
-order, and then `FEATURE-57BC` is the v1.0.0 release. Read the plan file in `docs/plan/` before
-implementing any of it; the plan is the contract.
+hosting, theme and settings**, and `PHASE02` shipped the **keys page and the four application service
+seams** — the app now generates and writes real key pairs. The Generate and Validate pages remain
+deliberate placeholders, filled by `PHASE03` and `PHASE04` in that order, and then `FEATURE-57BC` is the
+v1.0.0 release. Read the plan file in `docs/plan/` before implementing any of it; the plan is the contract.
 
 **One decision is due and deliberately outstanding:** the library is not trim/AOT-safe, because
 serialization is reflection-based. `FEATURE-03A9-PHASE04` was the point at which the model became
@@ -36,7 +36,7 @@ it.
 and validates them, signing with RSA or post-quantum ML-DSA keys. All cryptography comes from
 [Enigma.Core](https://www.nuget.org/packages/Enigma.Core) 1.1.0. A companion Avalonia desktop app
 (`src/Enigma.Licensing.Desktop`, `FEATURE-179C`) gives the issuer a UI for the same operations; its
-shell ships and its three workflow pages are being filled in phase by phase.
+shell and its keys page ship, and the other two workflow pages are being filled in phase by phase.
 
 It is the successor to **Enigma.LicenseManager** (v1.2.0, which stays on NuGet for legacy
 consumers). It is a **clean break**: the license and key formats are new, and there is deliberately
@@ -290,8 +290,54 @@ public surface a third-party consumer would.
 Types in place: `Program`, `App`, `MainWindow` + the four page views, `MainWindowViewModel`,
 `SettingsViewModel`, `ThemeOption`, the three placeholder page ViewModels, `IThemeService`/`ThemeService`,
 `AppSettings`/`IAppSettingsStore`/`AppSettingsStore`/`AppTheme`, `AppIcons`, `AppInfo`, and the two
-hosting extensions. The app-own wrappers over the info bar, the overlay and the file picker land with
-`PHASE02`, which is the first phase with a caller for them.
+hosting extensions. The app-own wrappers over the info bar, the overlay and the file picker landed with
+`PHASE02`, the first phase with a caller for them.
+
+### Keys page & the application service seams (FEATURE-179C-PHASE02)
+
+The first of the three placeholder pages made real, plus the four seams that let a ViewModel do platform
+work without naming a platform type. The page picks a scheme, optionally a modulus size and a password,
+asks where both halves go, generates off the UI thread behind the overlay, and keeps the new key's
+fingerprint on screen with a Copy button.
+
+- **`IInfoBarService.ShowAsync` completes when the bar is *dismissed*, not when it appears.** The control's
+  `ShowAsync` returns a `TaskCompletionSource` resolved by its `Closed` event. `NotificationService`
+  therefore **does not await it**, and hands the library's task back only when it has already completed —
+  which in practice means it failed, i.e. a host never registered at startup. Awaiting would hold a command
+  open until a user cleared a banner, and the `finally` that wipes the password copy out of memory would not
+  run until then. `NotificationServiceTests` pins this with a double whose task never resolves. **Do not
+  "simplify" that method back into a one-line `=>`.**
+- **No `Content` on the info bar.** Its control template has no `ContentPresenter`, so the inherited
+  `Content` is never rendered and an action button cannot live there. That is why the fingerprint's copy
+  action sits on the page's result card — which is better anyway: a dismissed notification cannot be copied
+  from.
+- **The progress card is built in code, in `BusyOverlayService`**, from the app's own `card` / `h2` / `hint`
+  style classes. A templated control would have meant a class, a control theme and a dictionary merged into
+  `App.axaml` to say the same thing. `BusyOverlayServiceTests` walks the resulting tree, because a control
+  tree assembled wrongly compiles perfectly and shows an empty grey box.
+- **`ClipboardService` reaches the clipboard through the running application's main window**, the same route
+  `ThemeService` takes to the application — no startup handover, and no clipboard is a log line, not a
+  failure.
+- **Defaults: ML-DSA-65, and RSA at 4096** (the predecessor desktop default, not the library's 3072 — an
+  issuing key is generated once and the seconds are paid once). The size picker is *absent*, not disabled,
+  for the ML-DSA members, whose parameter sets fix their own key sizes.
+- **A password typed and not yet repeated keeps the generate button disabled**, while the mismatch message
+  appears only once something has been typed into the confirmation. Two rules on purpose: one governs the
+  button, the other the error text. The predecessor left its button live with an unconfirmed password.
+- **The password's `string` cannot be cleared, only the `char[]` copy** the page makes for the one call that
+  needs it — a `TextBox` hands its text over as a string. A test reads the array back after the command to
+  prove the page cleans up after itself; the password is never written to a file or a log.
+- **Suggested file names are `<name>.public.key.json` / `<name>.private.key.json`**, offered as `signing.*`
+  when nothing has been chosen and named after the other half once one has. Nothing enforces the suffixes —
+  the library reads a key file by its contents.
+- **`InternalsVisibleTo("Enigma.Licensing.Desktop.UnitTests")` is now declared for the app too**
+  (`Properties/AssemblyInfo.cs`), for the two services above, whose behaviour *is* how they use the control
+  library and so cannot be reached through a fake of their own interface.
+
+Types in place: `IFileDialogService`/`FileDialogService`, `INotificationService`/`NotificationService`,
+`IBusyOverlayService`/`BusyOverlayService`, `IClipboardService`/`ClipboardService`,
+`SignatureAlgorithmOption`, and a real `GenerateKeysViewModel` + `GenerateKeysView`. Interfaces public,
+implementations `internal sealed`, all four registered `AddSingleton` by `AddEnigmaLicensingDesktop()`.
 
 ## Architecture & conventions
 
@@ -429,10 +475,19 @@ src/Enigma.Licensing.Desktop/        The Avalonia issuer app (net10.0)
   Assets/appicon.ico                 Placeholder branding, reused from the predecessor app
   Hosting/EnigmaAvaloniaServiceCollectionExtensions.cs   AddEnigmaAvaloniaDesktop() — the library's six
   Hosting/ServiceCollectionExtensions.cs                 AddEnigmaLicensingDesktop() — + AddEnigmaLicensing()
+  Properties/AssemblyInfo.cs         InternalsVisibleTo for the app's test assembly (PHASE02 — see Shipped)
   Resources/AppIcons.cs              The four Phosphor rail outlines, resolved once each
   Resources/AppInfo.cs               Title, project URL, app & library versions read from the assemblies
   Services/IThemeService.cs          Repaint the app — the seam that keeps Avalonia out of the ViewModels
   Services/ThemeService.cs           The only place that assigns RequestedThemeVariant
+  Services/IFileDialogService.cs     Ask where to write a document — one string in, one path or null out
+  Services/FileDialogService.cs      Over the library's picker; every document this app writes is JSON
+  Services/INotificationService.cs   Report an outcome: success or error
+  Services/NotificationService.cs    Over the info bar — and deliberately does NOT await its dismissal
+  Services/IBusyOverlayService.cs    Block the app while something long runs; always hide in a finally
+  Services/BusyOverlayService.cs     Builds the progress card in code, from the app's own style classes
+  Services/IClipboardService.cs      Copy a short value — the fingerprint, above all
+  Services/ClipboardService.cs       Via the running app's main window; no clipboard is a log line
   Settings/AppTheme.cs               System / Light / Dark
   Settings/AppSettings.cs            The preference file's shape + its formatVersion
   Settings/IAppSettingsStore.cs      Load/Save — neither may throw into the application
@@ -440,12 +495,13 @@ src/Enigma.Licensing.Desktop/        The Avalonia issuer app (net10.0)
   ViewModels/MainWindowViewModel.cs  The rail: three workflows + settings in the footer; navigates nowhere
   ViewModels/ThemeOption.cs          One appearance choice: an AppTheme and the words offering it
   ViewModels/SettingsViewModel.cs    Apply-and-persist exactly once, plus the about section
-  ViewModels/GenerateKeysViewModel.cs      placeholder — filled by FEATURE-179C-PHASE02
+  ViewModels/SignatureAlgorithmOption.cs   One picker entry: scheme, wire label, description, is-RSA
+  ViewModels/GenerateKeysViewModel.cs      The keys page: pickers, password, paths, generate, fingerprint
   ViewModels/GenerateLicenseViewModel.cs   placeholder — filled by FEATURE-179C-PHASE03
   ViewModels/ValidateLicenseViewModel.cs   placeholder — filled by FEATURE-179C-PHASE04
   Views/MainWindow.axaml(.cs)        NavigationView + the three service hosts, last in the root Panel
   Views/SettingsView.axaml(.cs)      Appearance SettingsCard + the About expander
-  Views/GenerateKeysView.axaml(.cs)        placeholder page
+  Views/GenerateKeysView.axaml(.cs)        Three SettingsCardExpanders, the accent button, the result card
   Views/GenerateLicenseView.axaml(.cs)     placeholder page
   Views/ValidateLicenseView.axaml(.cs)     placeholder page
 tests/Enigma.Licensing.UnitTests/    xUnit v3 test suite
@@ -462,9 +518,10 @@ tests/Enigma.Licensing.UnitTests/    xUnit v3 test suite
 tests/Enigma.Licensing.Desktop.UnitTests/   xUnit v3 test suite for the app (net10.0)
   Hosting/                           The container wiring: what is registered, and with which lifetime
   Settings/                          The preference file and every way it can be useless
-  ViewModels/                        The rail's composition, the appearance selector, ThemeOption
+  Services/                          NotificationService's timing, BusyOverlayService's card (needs friend access)
+  ViewModels/                        The rail, the appearance selector, the keys page + its real round-trip
   Resources/                         AppInfo's shape (a version, no build metadata, an https project URL)
-  TestDoubles/                       RecordingLogger, FakeAppSettingsStore, FakeThemeService
+  TestDoubles/                       The app's seams and the library ones beneath them, plus RecordingLogger
 docs/roadmap.md                      Work-item registry
 docs/plan/                           Per-item plans
 docs/done/                           Per-dev completion records
@@ -573,15 +630,20 @@ shell ViewModel takes its rail icons as `Geometry` arguments precisely so a test
 `PathGeometry` sentinel. Keep that seam; the alternative is a headless-Avalonia dependency for four
 assertions.
 
+*Constructing* a control needs no platform, though, and `Services/` relies on that: `BusyOverlayServiceTests`
+walks the `Border`/`StackPanel`/`ProgressBar` tree the overlay card is built from, and `FakeInfoBarService`
+hands a real `InfoBar` to the configure callback. Measuring, templating or rendering one is what would need
+a platform, and nothing in the suite does any of the three.
+
 The xunit.v3 analyzers run at warning level, so under `TreatWarningsAsErrors` **they are build
 errors**. The one that bites constantly is `xUnit1051`: any call taking a `CancellationToken` must be
-passed `TestContext.Current.CancellationToken`. `LicenseEnvelopeTests`, the `Keys/` and `Api/` suites
-and `DependencyInjection/` each keep a
+passed `TestContext.Current.CancellationToken`. `LicenseEnvelopeTests`, the `Keys/` and `Api/` suites,
+`DependencyInjection/` and the desktop suite's `GenerateKeysRoundTripTests` each keep a
 `private static CancellationToken Token => TestContext.Current.CancellationToken;`
 for this — copy that pattern rather than suppressing the rule.
 
-**Key generation is the expensive part of the suite** (most of the ~13 s run over 918 cases — 836 in the
-library suite, 82 in the desktop one, which costs half a second): ten RSA
+**Key generation is the expensive part of the suite** (most of the ~14 s run over 976 cases — 836 in the
+library suite, 140 in the desktop one, which costs under two seconds): ten RSA
 pairs, one at 4096 bits, plus Argon2id at 64 MiB per encrypted round-trip. Two collection fixtures exist
 so nothing generates a key it does not need to:
 
@@ -591,7 +653,10 @@ so nothing generates a key it does not need to:
   defaults for a test that just needs *a* key of each shape. The `DependencyInjection/` suite joins
   this collection too, rather than generating its own — a registration test needs *a* key, not a new one.
 
-Generate outside a fixture only when generation is what the test is about.
+Generate outside a fixture only when generation is what the test is about. The **desktop** suite has no
+fixture and needs none: it generates ML-DSA-44 pairs, the cheapest the library makes, and only where a real
+`LicensingKeyPair` is unavoidable — the type's constructor is internal to the library, so a fake key service
+has to be handed one rather than invent it.
 
 ### Two ways this build goes red without anyone touching the repo
 
@@ -666,4 +731,4 @@ written. Commits are left to the maintainer.
 
 The sequence is a hard dependency chain: `FEATURE-2FE8` (repo skeleton — **done**) →
 `FEATURE-03A9` (licensing core library, 4 phases — **all done**) → `FEATURE-179C` (desktop app,
-4 phases — **PHASE01 done, PHASE02 next**) → `FEATURE-57BC` (v1.0.0 release, 4 phases).
+4 phases — **PHASE01–02 done, PHASE03 next**) → `FEATURE-57BC` (v1.0.0 release, 4 phases).
