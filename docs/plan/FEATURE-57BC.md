@@ -1,6 +1,6 @@
 # FEATURE-57BC — First release (v1.0.0)
 
-**Status:** IN PROGRESS
+**Status:** DONE
 **Type:** multi-phase (4 phases per the dotnet-release first-release shape, one branch per phase:
 `feature/feature-57bc-phaseNN-<slug>`)
 **Depends on:** FEATURE-03A9 and FEATURE-179C complete
@@ -131,9 +131,18 @@ Branch: `feature/feature-57bc-phase03-readme-notes`
 Acceptance: README renders correctly as packed (no doc-tree links), notes/callout/PackageReleaseNotes
 consistent, SECURITY.md present.
 
-## PHASE04 — Release runbook, publish scripts & pack-verify — **TODO**
+## PHASE04 — Release runbook, publish scripts & pack-verify — **DONE**
 
 Branch: `feature/feature-57bc-phase04-runbook`
+
+> **Amended 2026-08-07, at build time.** Step 2's `-p:DebugType=none` contradicted a shipped decision:
+> the desktop csproj's `TrimNativeSymbolsFromPublish` comment said the *managed* `.pdb` files "are
+> deliberately kept … what turns a user's crash report into a file and a line number", and the HardCopy
+> scripts the step names do not pass the flag. Surfaced before implementation; **the plan won** — the
+> scripts pass `-p:DebugType=none` and the csproj comment was corrected to say that the release scripts
+> suppress managed symbols while an ordinary publish keeps them. The step also gained
+> `-p:GenerateDocumentationFile=false` and the README/LICENSE copy into the staging directory, both from
+> the HardCopy pattern the step invokes.
 
 1. `docs/RELEASE.md` from the dotnet-release template (placeholders: Enigma.Licensing,
    Enigma.Licensing.slnx, src/Enigma.Licensing/Enigma.Licensing.csproj, main).

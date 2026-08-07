@@ -63,8 +63,8 @@
        (win-x64: libSkiaSharp.pdb 84 MB + libHarfBuzzSharp.pdb 21 MB). They are of no use to anyone running
        the app and more than double the published artifact, so they are dropped here rather than in the
        publish scripts — that way every publish is clean, however it was invoked. The *managed* .pdb files
-       are deliberately kept: they are ~60 KB and are what turns a user's crash report into a file and a
-       line number. -->
+       are left to the invoking build, since they are the useful kind: scripts/publish.* pass
+       -p:DebugType=none so a distributed zip carries none, while an ordinary publish keeps them. -->
   <Target Name="TrimNativeSymbolsFromPublish" AfterTargets="ComputeResolvedFilesToPublishList">
     <ItemGroup>
       <ResolvedFileToPublish

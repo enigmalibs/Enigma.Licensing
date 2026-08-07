@@ -21,14 +21,17 @@ doc, comment or summary that describes a planned type as if it already ships.
 hosting, theme and settings**, `PHASE02` the **keys page and the four application service seams**,
 `PHASE03` the **generate page and licence profiles**, and `PHASE04` the **validate page**. There are no
 placeholder pages left — the app generates real key pairs, signs real licences with them and reaches real
-verdicts about them. `FEATURE-57BC` (the v1.0.0 release) is what remains, and its `PHASE01` has landed:
-the library carries its **packaging metadata**, is **trim- and AOT-safe**, and its third-party licence
-audit is on file. `PHASE02` has landed too: the **five per-category usage guides and their index** are
-in `docs/guides/`, every snippet compiled against the real public surface rather than read. So has
-`PHASE03`: the **packed `README.md`, `RELEASENOTES.md`, `SECURITY.md` and `<PackageReleaseNotes>`** are
-written, and with the README no longer empty **the package packs** — NU5040 is gone. `PHASE04` (the
-release runbook, the app's zip publish scripts and pack-verify) is the last one. Read the plan file in
-`docs/plan/` before implementing any of it; the plan is the contract.
+verdicts about them.
+
+**`FEATURE-57BC` (the v1.0.0 release) is complete too, and with it every planned work item.** `PHASE01`
+gave the library its **packaging metadata**, made it **trim- and AOT-safe**, and put its third-party
+licence audit on file; `PHASE02` wrote the **five per-category usage guides and their index** in
+`docs/guides/`, every snippet compiled against the real public surface rather than read; `PHASE03` the
+**packed `README.md`, `RELEASENOTES.md`, `SECURITY.md` and `<PackageReleaseNotes>`**, which is what made
+the package packable — NU5040 is gone; and `PHASE04` the **release runbook, the app's two publish
+scripts and the pack-verify pass**. **Nothing outward-facing has happened**: no tag exists, nothing is
+pushed, and `github.com/enigmalibs/Enigma.Licensing` is still to be created. `docs/RELEASE.md` is the
+checklist for all of that, and running it is the maintainer's, never an agent's.
 
 **The trim/AOT decision that was outstanding is answered — the fix shipped.** Serialization was
 reflection-based, which meant a consumer publishing with `PublishAot`, or with
@@ -481,8 +484,8 @@ had parked on this phase were surfaced at build time, confirmed, and the plan am
   scope. The full table is in `docs/done/FEATURE-57BC-PHASE01.md`.
 - **The package could not be packed until `PHASE03`.** `dotnet pack` failed **NU5040 — the readme file is
   empty**, because `README.md` was a zero-byte placeholder by design; the metadata was verified instead by
-  generating the nuspec directly. `PHASE03` wrote the README and the pack now succeeds. `PHASE04` still
-  owns pack-verify and its full assertion list.
+  generating the nuspec directly. `PHASE03` wrote the README and the pack succeeds; `PHASE04` ran the
+  full pack-verify against the real artifact and every assertion held.
 - **The desktop app carries an explicit `<Version>1.0.0</Version>`**, as its own csproj comment promised
   this phase would set. It matches the SDK default it had been inheriting, so nothing observable moved —
   but `PHASE04`'s publish scripts read it back with `dotnet msbuild -getProperty:Version`.
@@ -490,6 +493,47 @@ had parked on this phase were surfaced at build time, confirmed, and the plan am
 Types in place: `EnvelopeJsonContext`, `PayloadJsonContext` (both internal), `LicensePayload.TryDeserialize`,
 and `LicenseEnvelope.ReadLicense()` — the phase's only public-surface addition. `<PackageReleaseNotes>` was
 deliberately left absent here; `PHASE03` wrote it beside `RELEASENOTES.md` so the two cannot disagree.
+
+### Release runbook, publish scripts & pack-verify (FEATURE-57BC-PHASE04)
+
+`docs/RELEASE.md` and `scripts/publish.sh` / `scripts/publish.ps1` — the release, made runnable. No
+source file and no test changed; the one code edit is a csproj comment.
+
+- **The runbook is printed, never run — and that boundary is permanent.** `docs/RELEASE.md` holds the
+  pre-flight, the merge to `main`, `git tag 1.0.0`, `dotnet pack`, `dotnet nuget push` and the
+  post-publish checks, plus a step 7 for the app zips. **An agent does not execute any of it**: the two
+  local, reversible exceptions are the pack-verify below and running the publish scripts. No tag exists,
+  nothing is pushed, and there is no git remote yet — the GitHub repository is the user's to create.
+- **Four deliberate departures from the release template**, all repo facts: `dotnet test --solution
+  Enigma.Licensing.slnx` (the .NET 10 SDK in MTP mode rejects `dotnet test <Solution>.slnx`), the
+  `DOTNET_ROOT=~/.dotnet` prefix, an `AVLN`-count pre-flight item (XAML warnings bypass
+  `TreatWarningsAsErrors`, so the desktop build can succeed while carrying them), and step 7 itself.
+- **The scripts ask MSBuild for the version** — `dotnet msbuild <app.csproj> -getProperty:Version` —
+  rather than scraping a file, because the library and the app version independently and there is no
+  solution-wide `<Version>` to read. They take **no version argument**, so an artifact cannot be named
+  something the executable disagrees with. Output is
+  `artifacts/Enigma.Licensing.Desktop-<version>-<rid>.zip`, `artifacts/` gitignored.
+- **The publish flags suppress managed symbols**: `-p:DebugType=none` and
+  `-p:GenerateDocumentationFile=false` alongside self-contained single-file with compression. This
+  *reversed* a `FEATURE-179C-PHASE01` decision — the desktop csproj had said the managed `.pdb` files were
+  "deliberately kept"; the conflict was surfaced and the maintainer chose the flag. The csproj comment now
+  says the release scripts suppress them while an ordinary publish keeps them; keep the two in step if
+  either moves. The `TrimNativeSymbolsFromPublish` target is still needed regardless — the *native*
+  Skia/HarfBuzz `.pdb`s come from the runtime packages, not from `DebugType`.
+- **Pack-verify ran against the real artifact and passed every assertion**: version 1.0.0, the `.nupkg`
+  and nothing else (no `.snupkg`), a non-empty `README.md` and `LICENSE.md` embedded, the nuspec's
+  `version`/`title`/`license type="file"`/`readme`/`releaseNotes`, an XML doc file per TFM, and the
+  dependency floors per TFM — `System.Buffers` + `System.Text.Json` on netstandard2.0 only, **PolySharp
+  absent**, **no `Microsoft.NET.ILLink.Tasks`**. It packed into the session scratchpad, not
+  `./artifacts-verify`, which `.gitignore` would not have covered, and the directory was deleted.
+- **Both zips build and carry four entries each** — the directory, the single-file executable, `README.md`
+  and `LICENSE.md`. No `.pdb`, no `.xml`, no loose assemblies. `publish.sh` (Info-ZIP) preserves the Linux
+  executable bit; `publish.ps1`'s `Compress-Archive` does not, so a linux-x64 artifact built on Windows
+  needs `chmod +x` — said in the script and in the runbook. `pwsh` is not installed on this machine, so
+  the PowerShell twin has been reviewed but not executed.
+
+Files in place: `docs/RELEASE.md`, `scripts/publish.sh` (mode 755), `scripts/publish.ps1`. No new type,
+no new package, no new test.
 
 ## Architecture & conventions
 
@@ -574,7 +618,7 @@ namespace rule cannot. **Keep it green**, and add to the allowlist only with the
 
 ## Project layout
 
-Directories marked *planned* do not exist yet.
+Everything below exists — no directory here is planned.
 
 ```
 Enigma.Licensing.slnx                Solution (SLNX format; /src/ and /tests/ solution folders)
@@ -697,7 +741,9 @@ docs/guides/keys.md                  enigma-key/1, generation, password encrypti
 docs/guides/generating-licenses.md   LicenseRequest, features/claims, the half-open window, the three overloads
 docs/guides/validating-licenses.md   The check order, the seven failures, ILicenseStore, AddEnigmaLicensing()
 docs/guides/device-identity.md       DeviceIdentifier, its weaknesses, and plugging in another scheme
-scripts/                             planned — app zip publish scripts (FEATURE-57BC-PHASE04)
+docs/RELEASE.md                      The release runbook — pre-flight, merge, tag, pack, push, app zips
+scripts/publish.sh                   Builds the app's distribution zips; version asked of MSBuild
+scripts/publish.ps1                  Its PowerShell twin — same artifacts, cut a release from either OS
 ```
 
 There is **no CI workflow**, deliberately — consistent with every sibling Enigma repo.
@@ -779,6 +825,10 @@ DOTNET_ROOT=~/.dotnet dotnet test --solution Enigma.Licensing.slnx -c Release
 
 Note the `--solution` flag: on the .NET 10 SDK in MTP mode, `dotnet test <Solution>.slnx` is
 rejected.
+
+Those two commands are also the release pre-flight. `scripts/publish.sh` (or its `.ps1` twin) builds
+the app's distribution zips into `artifacts/`, and everything beyond that — tag, pack, push — is
+`docs/RELEASE.md`, which **the maintainer runs, not an agent**.
 
 Zero-warning builds are enforced (`TreatWarningsAsErrors=true`, `EnforceCodeStyleInBuild=true`), so
 any warning fails the build. **XAML (`AVLN…`) warnings bypass `TreatWarningsAsErrors`** and are emitted
@@ -917,7 +967,7 @@ Each unit of work gets its own branch (`feature/…`, `bugfix/…`, `review/…`
 plan's acceptance criteria are met, the roadmap/plan statuses are updated, and the completion doc is
 written. Commits are left to the maintainer.
 
-The sequence is a hard dependency chain: `FEATURE-2FE8` (repo skeleton — **done**) →
-`FEATURE-03A9` (licensing core library, 4 phases — **all done**) → `FEATURE-179C` (desktop app,
-4 phases — **all done**) → `FEATURE-57BC` (v1.0.0 release, 4 phases — `PHASE01`, `PHASE02` and
-`PHASE03` **done**, **PHASE04 next**).
+The sequence was a hard dependency chain, and all of it has landed: `FEATURE-2FE8` (repo skeleton) →
+`FEATURE-03A9` (licensing core library, 4 phases) → `FEATURE-179C` (desktop app, 4 phases) →
+`FEATURE-57BC` (v1.0.0 release, 4 phases) — **every item and every phase is `DONE`**. The roadmap has
+no `TODO` row left, so the next work item is a new one: allocate an ID, plan it, and append its row.
