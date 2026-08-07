@@ -15,6 +15,6 @@
 | - PHASE04    | Validate page                                  | DONE        | (in FEATURE-179C.md)      |
 | FEATURE-57BC | First release (v1.0.0)                         | IN PROGRESS | docs/plan/FEATURE-57BC.md |
 | - PHASE01    | Package metadata & third-party license audit   | DONE        | (in FEATURE-57BC.md)      |
-| - PHASE02    | Usage guides & index                           | TODO        | (in FEATURE-57BC.md)      |
+| - PHASE02    | Usage guides & index                           | DONE        | (in FEATURE-57BC.md)      |
 | - PHASE03    | README, release notes & community files        | TODO        | (in FEATURE-57BC.md)      |
 | - PHASE04    | Release runbook, publish scripts & pack-verify | TODO        | (in FEATURE-57BC.md)      |

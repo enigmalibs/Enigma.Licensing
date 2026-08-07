@@ -83,7 +83,7 @@ Acceptance: Release build stays zero-warning with the metadata in place; audit t
 `docs/done/FEATURE-57BC-PHASE01.md`; the whole suite passes with source-generated serialization as the
 only resolver.
 
-## PHASE02 — Usage guides & index — **TODO**
+## PHASE02 — Usage guides & index — **DONE**
 
 Branch: `feature/feature-57bc-phase02-guides`
 

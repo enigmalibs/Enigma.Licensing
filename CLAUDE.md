@@ -23,7 +23,9 @@ hosting, theme and settings**, `PHASE02` the **keys page and the four applicatio
 placeholder pages left — the app generates real key pairs, signs real licences with them and reaches real
 verdicts about them. `FEATURE-57BC` (the v1.0.0 release) is what remains, and its `PHASE01` has landed:
 the library carries its **packaging metadata**, is **trim- and AOT-safe**, and its third-party licence
-audit is on file. `PHASE02` (the usage guides) is next. Read the plan file in `docs/plan/` before
+audit is on file. `PHASE02` has landed too: the **five per-category usage guides and their index** are
+in `docs/guides/`, every snippet compiled against the real public surface rather than read. `PHASE03`
+(the README, release notes and `SECURITY.md`) is next. Read the plan file in `docs/plan/` before
 implementing any of it; the plan is the contract.
 
 **The trim/AOT decision that was outstanding is answered — the fix shipped.** Serialization was
@@ -685,7 +687,12 @@ tests/Enigma.Licensing.Desktop.UnitTests/   xUnit v3 test suite for the app (net
 docs/roadmap.md                      Work-item registry
 docs/plan/                           Per-item plans
 docs/done/                           Per-dev completion records
-docs/guides/                         planned — per-category usage guides (FEATURE-57BC-PHASE02)
+docs/guides/README.md                The index — repo-only, so relative links to the guides are correct here
+docs/guides/license-format.md        The enigma-license/1 envelope, the payload, the algorithm identifiers
+docs/guides/keys.md                  enigma-key/1, generation, password encryption, fingerprints, IKeyService
+docs/guides/generating-licenses.md   LicenseRequest, features/claims, the half-open window, the three overloads
+docs/guides/validating-licenses.md   The check order, the seven failures, ILicenseStore, AddEnigmaLicensing()
+docs/guides/device-identity.md       DeviceIdentifier, its weaknesses, and plugging in another scheme
 scripts/                             planned — app zip publish scripts (FEATURE-57BC-PHASE04)
 ```
 
@@ -874,8 +881,10 @@ MTP coverage needs `Microsoft.Testing.Extensions.CodeCoverage`. Measure before t
   `[JsonSerializable]` entry on the right context and a `JsonTypeInfo` member on `LicenseJson`;
   registering it nowhere means it throws rather than falling back to reflection, which is the point.
 - **Documentation.** Every public member carries XML docs; `GenerateDocumentationFile=true` is on
-  from bootstrap, so a missing comment fails the zero-warning build. Per-category usage guides will
-  live under `docs/guides/` (`FEATURE-57BC-PHASE02`).
+  from bootstrap, so a missing comment fails the zero-warning build. Per-category usage guides live
+  under `docs/guides/` (`FEATURE-57BC-PHASE02`) — five guides plus an index, one per library
+  category. **Their snippets are release-gated**: every fence is compiled against the real surface
+  before a release ships, never eyeballed, and the coverage table goes in the completion doc.
 - **Packaging metadata** (`PackageId`, `Version`, `Description`, …) landed at release time with
   `FEATURE-57BC-PHASE01`, per the `dotnet-release` skill — all twelve properties plus the packing
   `ItemGroup`. `<PackageReleaseNotes>` is the one still to come (`PHASE03`, beside `RELEASENOTES.md`).
@@ -901,5 +910,5 @@ written. Commits are left to the maintainer.
 
 The sequence is a hard dependency chain: `FEATURE-2FE8` (repo skeleton — **done**) →
 `FEATURE-03A9` (licensing core library, 4 phases — **all done**) → `FEATURE-179C` (desktop app,
-4 phases — **all done**) → `FEATURE-57BC` (v1.0.0 release, 4 phases — `PHASE01` **done**,
-**PHASE02 next**).
+4 phases — **all done**) → `FEATURE-57BC` (v1.0.0 release, 4 phases — `PHASE01` and `PHASE02`
+**done**, **PHASE03 next**).
