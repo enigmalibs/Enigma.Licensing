@@ -1,0 +1,85 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <!-- Multi-targeted because this is a published NuGet library: it mirrors Enigma.Core's TFMs so
+         no consumer of Enigma.Core is excluded from it (same reasoning as Enigma.DataEncryption,
+         the other successor library built on Core). netstandard2.0 keeps .NET Framework and older
+         consumers reachable; net8.0/net10.0 get the modern runtime surface without polyfills. -->
+    <TargetFrameworks>netstandard2.0;net8.0;net10.0</TargetFrameworks>
+    <!-- Ships the XML doc file consumers get IntelliSense from; also makes a missing doc comment
+         on a public member a build error under TreatWarningsAsErrors. On from bootstrap so the
+         public surface can never grow undocumented members. -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- Trim and AOT analyzers, on the modern TFMs only (netstandard2.0 is never published AOT). They
+         are what keeps the library honest now that serialization is source-generated rather than
+         reflection-based: any code path that needs runtime reflection becomes a build error here,
+         under TreatWarningsAsErrors, instead of an InvalidOperationException in a consumer's published
+         app. IsAotCompatible implies IsTrimmable and turns on the trim/single-file/AOT analyzers. -->
+    <IsAotCompatible Condition="'$(TargetFramework)' != 'netstandard2.0'">true</IsAotCompatible>
+  </PropertyGroup>
+  <!-- NuGet packaging metadata (FEATURE-57BC-PHASE01). Deliberately absent until release time, per the
+       house release workflow; this is that release. The version lives here rather than in
+       Directory.Build.props because the library and the desktop app version independently. -->
+  <PropertyGroup>
+    <PackageId>Enigma.Licensing</PackageId>
+    <Version>1.0.0</Version>
+    <Title>Enigma.Licensing — .NET License Generation &amp; Validation</Title>
+    <Description>Generate, sign and validate software licenses in .NET. Licenses are signed JSON envelopes (enigma-license/1) whose signature covers the stored payload bytes exactly — there is no canonicalization step to get wrong — and they can be signed with classical RSA (SHA-256/384/512) or post-quantum ML-DSA (FIPS 204, parameter sets 44/65/87). Key pairs are generated, stored and optionally password-encrypted (Argon2id + AES-256-GCM) in a single enigma-key/1 format. A license carries feature flags, arbitrary claims, an optional validity window and an optional device binding; validation is a verdict rather than an exception, reports the first failing check, and supports anchored wildcard product identifiers. All cryptography comes from Enigma.Core.</Description>
+    <PackageTags>license licensing signature rsa ml-dsa fips-204 post-quantum dotnet</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageLicenseFile>LICENSE.md</PackageLicenseFile>
+    <RepositoryUrl>https://github.com/enigmalibs/Enigma.Licensing</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageProjectUrl>https://github.com/enigmalibs/Enigma.Licensing</PackageProjectUrl>
+    <!-- Written in FEATURE-57BC-PHASE03 alongside RELEASENOTES.md itself, so the two cannot disagree:
+         this is a prose summary of that file's v1.0.0 section and ends by pointing at it. There are
+         deliberately no symbol properties (IncludeSymbols / SymbolPackageFormat / PublishRepositoryUrl /
+         EmbedUntrackedSources) and no GeneratePackageOnBuild: a release ships one .nupkg, packed
+         explicitly by the release step rather than by every local build. -->
+    <PackageReleaseNotes>First public release. Generates and validates signed software licenses: enigma-license/1 envelopes whose signature covers the stored payload bytes exactly, with no canonicalization step; enigma-key/1 key files covering both algorithm families and both halves of a pair, with optional Argon2id + AES-256-GCM encryption of the private half; and six signature schemes — RSA with SHA-256/384/512 and post-quantum ML-DSA-44/65/87 (FIPS 204). A license carries feature flags, arbitrary claims, an optional validity window and an optional device binding. Validation returns a verdict rather than throwing, reports the first failing check of eight, and supports anchored wildcard product identifiers. Serialization is source-generated, so the library is trim- and AOT-safe. A clean break from Enigma.LicenseManager: its licenses and keys are deliberately not readable here. See RELEASENOTES.md for the full details.</PackageReleaseNotes>
+  </PropertyGroup>
+  <!-- What actually puts the two files in the package — PackageReadmeFile and PackageLicenseFile only
+       name them. Both live at the repository root, two levels above this project. -->
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+    <None Include="..\..\LICENSE.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+  <!-- LangVersion / Nullable / ImplicitUsings / TreatWarningsAsErrors are deliberately absent:
+       they come from Directory.Build.props and must never be repeated per-project. No Version
+       attributes either — versions live in Directory.Packages.props (CPM). -->
+  <!-- Enigma.Core 1.1.0 — the cryptographic engine behind every service here: RSA and ML-DSA key
+       generation and signing, Argon2id key derivation, AES-256-GCM, SHA-256 and hex encoding. It
+       multi-targets the same three TFMs, so the reference is unconditional. It is an implementation
+       detail: no Enigma.Core.* or Org.BouncyCastle.* type may reach this library's public surface —
+       guarded by PublicSurfaceIsolationTests, which walks the exported surface by reflection and also
+       rejects types from Ulid and DeviceId. -->
+  <!-- Ulid: the identifier the generator issues when a LicenseRequest carries none. DeviceId: the
+       machine-name + OS-version components behind DeviceIdentifier.Generate(). Both multi-target all
+       three of our TFMs, so both references are unconditional; both are MIT. Like Enigma.Core they are
+       implementation details — no Ulid or DeviceId type reaches this library's public surface, which
+       is why DeviceIdentifier.Generate() returns a plain string. -->
+  <!-- Microsoft.Extensions.DependencyInjection.Abstractions: the abstractions only, never the concrete
+       container — a library registers services, it does not build the provider. It is the one dependency
+       deliberately visible on the public surface (AddEnigmaLicensing takes and returns
+       IServiceCollection); the isolation guard test knows about that exception. Unconditional: it
+       multi-targets all three of our TFMs and is not part of any shared framework, so no NU1510. -->
+  <ItemGroup>
+    <PackageReference Include="Enigma.Core" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+    <PackageReference Include="Ulid" />
+    <PackageReference Include="DeviceId" />
+  </ItemGroup>
+  <!-- System.Buffers (Span/Memory/ArrayPool support) and System.Text.Json are framework-provided on
+       net8.0+; they are only needed as explicit packages on netstandard2.0. Referencing either on
+       net8.0/net10.0 would raise NU1510 and fail the zero-warnings build. The library's JSON use is
+       confined to what System.Text.Json 8.0 already supports (required members, IReadOnly*
+       collections), so the inbox versions on the modern TFMs are sufficient. -->
+  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
+    <PackageReference Include="System.Buffers" />
+    <PackageReference Include="System.Text.Json" />
+  </ItemGroup>
+  <!-- PolySharp: polyfills modern C# on netstandard2.0. Compile-only (PrivateAssets=all). -->
+  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
+    <PackageReference Include="PolySharp" PrivateAssets="all" />
+  </ItemGroup>
+</Project>

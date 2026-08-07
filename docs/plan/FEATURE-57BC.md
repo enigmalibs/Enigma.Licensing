@@ -1,6 +1,6 @@
 # FEATURE-57BC — First release (v1.0.0)
 
-**Status:** TODO
+**Status:** DONE
 **Type:** multi-phase (4 phases per the dotnet-release first-release shape, one branch per phase:
 `feature/feature-57bc-phaseNN-<slug>`)
 **Depends on:** FEATURE-03A9 and FEATURE-179C complete
@@ -23,9 +23,23 @@ boundary applies — in-repo edits + local pack-verify only; tag/pack/push are p
 
 ---
 
-## PHASE01 — Package metadata & third-party license audit — **TODO**
+## PHASE01 — Package metadata & third-party license audit — **DONE**
 
 Branch: `feature/feature-57bc-phase01-package-metadata`
+
+> **Amended 2026-08-07, at build time.** Two decisions `CLAUDE.md` parks on this phase were missing from
+> the plan as written, and both were confirmed into scope before implementation started:
+>
+> - **Step 4 (new) — trim/AOT safety.** `CLAUDE.md` records the source-generated `JsonSerializerContext`
+>   as "deliberately deferred to `FEATURE-57BC-PHASE01` … do not let v1.0.0 ship past it", but no step
+>   here implemented it. It is now step 4 below. This phase is the last one that touches library *code*
+>   (PHASE02–04 are documentation and the runbook), so deferring it again would have meant either a fifth
+>   phase or shipping 1.0.0 reflection-only.
+> - **Step 5 (new) — `LicenseEnvelope.ReadLicense()`.** `FEATURE-179C-PHASE03` flagged "a small gap in
+>   the library's public surface … for `FEATURE-57BC-PHASE01`": `GenerateAndSaveAsync` returns the
+>   envelope *"so the caller can read back the license identifier it issued"*, yet nothing reads a
+>   `License` out of one, so the desktop hand-parses `Payload` with `JsonDocument`. Adding it before the
+>   surface freezes at 1.0.0 is free; adding it after is an API addition to a released package.
 
 1. Add all **12** packable-library properties to `src/Enigma.Licensing/Enigma.Licensing.csproj`:
    PackageId, Version 1.0.0, Title ("Enigma.Licensing — .NET License Generation & Validation"),
@@ -49,11 +63,27 @@ Branch: `feature/feature-57bc-phase01-package-metadata`
    | PolySharp | compile-only (PrivateAssets=all) | out of scope |
    | xunit.v3, coverlet.collector | test-only | out of scope |
    Record findings in the completion doc.
+4. **Trim/AOT safety** (amendment): a source-generated `JsonSerializerContext` per options set —
+   `EnvelopeJsonContext` over `LicenseEnvelope` + `KeyEnvelope`, `PayloadJsonContext` over `License` —
+   with `LicenseJson.Envelope`/`.Payload` becoming each context's `Default.Options`, so the two
+   documented option sets keep their camelCase / omit-null / indentation settings while the resolver
+   stops being reflection. `IsAotCompatible` on the net8.0+ legs so the trim and AOT analyzers police
+   the library from here on. Every existing serialization test then runs through source generation,
+   which is the real proof; add a test pinning the resolver and the three registered document types.
+5. **`LicenseEnvelope.ReadLicense()`** (amendment): returns the **unverified** `License` parsed from
+   `Payload`, or `null` when those bytes are not a readable license — it never throws, because it is an
+   inspection helper over untrusted bytes, the counterpart of `LicenseValidationResult.License` and
+   documented with the same warning (safe to display, unsafe to act on). The desktop generate page drops
+   its private `ReadLicenseId` `JsonDocument` parse in favour of it.
+6. Set the desktop app's `<Version>` to 1.0.0 explicitly — the app csproj's own comment promises
+   `FEATURE-57BC` does this "alongside the library's packaging metadata", and PHASE04's publish scripts
+   read it back with `dotnet msbuild -getProperty:Version`.
 
 Acceptance: Release build stays zero-warning with the metadata in place; audit table in
-`docs/done/FEATURE-57BC-PHASE01.md`.
+`docs/done/FEATURE-57BC-PHASE01.md`; the whole suite passes with source-generated serialization as the
+only resolver.
 
-## PHASE02 — Usage guides & index — **TODO**
+## PHASE02 — Usage guides & index — **DONE**
 
 Branch: `feature/feature-57bc-phase02-guides`
 
@@ -79,7 +109,7 @@ in the completion doc.
 
 Acceptance: all guides present, indexed, snippets verified with the table recorded.
 
-## PHASE03 — README, release notes & community files — **TODO**
+## PHASE03 — README, release notes & community files — **DONE**
 
 Branch: `feature/feature-57bc-phase03-readme-notes`
 
@@ -101,9 +131,18 @@ Branch: `feature/feature-57bc-phase03-readme-notes`
 Acceptance: README renders correctly as packed (no doc-tree links), notes/callout/PackageReleaseNotes
 consistent, SECURITY.md present.
 
-## PHASE04 — Release runbook, publish scripts & pack-verify — **TODO**
+## PHASE04 — Release runbook, publish scripts & pack-verify — **DONE**
 
 Branch: `feature/feature-57bc-phase04-runbook`
+
+> **Amended 2026-08-07, at build time.** Step 2's `-p:DebugType=none` contradicted a shipped decision:
+> the desktop csproj's `TrimNativeSymbolsFromPublish` comment said the *managed* `.pdb` files "are
+> deliberately kept … what turns a user's crash report into a file and a line number", and the HardCopy
+> scripts the step names do not pass the flag. Surfaced before implementation; **the plan won** — the
+> scripts pass `-p:DebugType=none` and the csproj comment was corrected to say that the release scripts
+> suppress managed symbols while an ordinary publish keeps them. The step also gained
+> `-p:GenerateDocumentationFile=false` and the README/LICENSE copy into the staging directory, both from
+> the HardCopy pattern the step invokes.
 
 1. `docs/RELEASE.md` from the dotnet-release template (placeholders: Enigma.Licensing,
    Enigma.Licensing.slnx, src/Enigma.Licensing/Enigma.Licensing.csproj, main).

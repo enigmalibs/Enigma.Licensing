@@ -1,0 +1,58 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="using:Enigma.Licensing.Desktop.ViewModels"
+        xmlns:controls="using:Enigma.Avalonia.Desktop.Controls"
+        xmlns:contentDialog="using:Enigma.Avalonia.Desktop.Controls.ContentDialog"
+        xmlns:infoBar="using:Enigma.Avalonia.Desktop.Controls.InfoBar"
+        xmlns:nav="using:Enigma.Avalonia.Desktop.Controls.Navigation"
+        mc:Ignorable="d"
+        x:Class="Enigma.Licensing.Desktop.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Icon="/Assets/appicon.ico"
+        Title="{Binding Title}"
+        Background="{DynamicResource EnigmaBackgroundBrush}"
+        Width="1040" Height="760"
+        MinWidth="760" MinHeight="560"
+        WindowStartupLocation="CenterScreen">
+
+  <!-- A Panel z-stacks its children, so the three service hosts come LAST and draw over the whole app.
+       Their x:Names are what App.axaml.cs hands to RegisterHost, and each of those services throws from
+       its first call if its host was never handed over.
+
+       The host order is Overlay → ContentDialog → InfoBar, deliberately NOT the order in the library's own
+       setup guide: the Overlay's scrim would otherwise be painted on top of a ContentDialog, so a
+       confirmation raised during a long key generation would vanish behind it and the app would look hung.
+       Do not "correct" this ordering. -->
+  <Panel>
+
+    <DockPanel>
+      <!-- The rail is the single navigation surface: one NavigationItem per page, declared in
+           MainWindowViewModel. SelectedItem is two-way by default on this control, which is what lets a
+           click on the rail reach the navigation service. -->
+      <nav:NavigationView DockPanel.Dock="Left"
+                          Items="{Binding Navigation.Items}"
+                          FooterItems="{Binding Navigation.FooterItems}"
+                          SelectedItem="{Binding Navigation.SelectedItem}"
+                          Orientation="Vertical"
+                          PaneSize="90" />
+
+      <!-- The page itself, built by the navigation service's PageFactory with its ViewModel attached. -->
+      <ContentControl Content="{Binding Navigation.CurrentPage}" />
+    </DockPanel>
+
+    <controls:Overlay x:Name="HostOverlay" />
+
+    <!-- The dialog's size bounds are set once, here: they belong to the host and are not reset between
+         dialogs, so no dialog has to restate them. -->
+    <contentDialog:ContentDialog x:Name="HostDialog"
+                                 DialogMinWidth="380"
+                                 DialogMaxWidth="640"
+                                 DialogMaxHeight="480" />
+
+    <infoBar:InfoBar x:Name="HostInfoBar" />
+
+  </Panel>
+
+</Window>

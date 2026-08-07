@@ -1,6 +1,6 @@
 # FEATURE-179C — Desktop application
 
-**Status:** TODO
+**Status:** DONE
 **Type:** multi-phase (4 phases, one branch per phase: `feature/feature-179c-phaseNN-<slug>`)
 **Depends on:** FEATURE-03A9 (the app consumes the library's public services)
 
@@ -61,7 +61,7 @@ app pattern exactly.
 
 ---
 
-## PHASE01 — App shell, hosting, theme & settings — **TODO**
+## PHASE01 — App shell, hosting, theme & settings — **DONE**
 
 Branch: `feature/feature-179c-phase01-shell`
 
@@ -87,7 +87,7 @@ Acceptance: solution builds zero-warning (check AVLN counts manually — XAML wa
 TreatWarningsAsErrors); tests green; app launches with themed empty pages and working theme toggle
 (manual smoke, noted in completion doc).
 
-## PHASE02 — Keys page — **TODO**
+## PHASE02 — Keys page — **DONE**
 
 Branch: `feature/feature-179c-phase02-keys-page`
 
@@ -103,7 +103,7 @@ Branch: `feature/feature-179c-phase02-keys-page`
 
 Acceptance: build/tests green; a key pair generated in the app loads back through the library.
 
-## PHASE03 — Generate page & license profiles — **TODO**
+## PHASE03 — Generate page & license profiles — **DONE**
 
 Branch: `feature/feature-179c-phase03-generate-page`
 
@@ -114,8 +114,10 @@ Branch: `feature/feature-179c-phase03-generate-page`
    picker + password field, generate & save via `ILicenseGenerator` (suggested name
    `<product>.license.json`).
 2. **License profiles** (predecessor parity): `Models/LicenseProfile` — form fields + signing-key
-   *path* + algorithm, **never the password**; save/load as `.json` via file dialogs; loading
-   prefills the form.
+   *path*, **never the password**; save/load as `.json` via file dialogs; loading prefills the form.
+   *(Amended during PHASE03: the design line above said "+ algorithm". Dropped — `ILicenseGenerator`
+   takes no algorithm, since the private key's own scheme decides it, so a profile field would be
+   written and never read, and could silently disagree with the key file it names.)*
 3. Validation UX: `ObservableValidator` annotations; generate command disabled until valid;
    InfoBar success (with license id) / error.
 4. VM tests: request mapping (form → `LicenseRequest`, empty-optional handling), window-order
@@ -125,7 +127,7 @@ Branch: `feature/feature-179c-phase03-generate-page`
 Acceptance: build/tests green; a license generated in the app validates in the app and via the
 library API.
 
-## PHASE04 — Validate page — **TODO**
+## PHASE04 — Validate page — **DONE**
 
 Branch: `feature/feature-179c-phase04-validate-page`
 

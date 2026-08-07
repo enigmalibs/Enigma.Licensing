@@ -1,0 +1,236 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:sys="using:System"
+             xmlns:controls="using:Enigma.Avalonia.Desktop.Controls"
+             xmlns:editors="using:Enigma.Avalonia.Desktop.Controls.Editors"
+             xmlns:ei="https://github.com/josueclement/Enigma.Icons"
+             xmlns:vm="using:Enigma.Licensing.Desktop.ViewModels"
+             mc:Ignorable="d"
+             x:Class="Enigma.Licensing.Desktop.Views.ValidateLicenseView"
+             x:DataType="vm:ValidateLicenseViewModel">
+
+  <!-- The page reads top to bottom as the question: which licence, checked against which key, expected to say
+       what — then the verdict, then the document, then what the licence actually says. The last two cards are
+       the half of the answer a verdict on its own cannot give. -->
+
+  <ScrollViewer>
+    <StackPanel Classes="page">
+
+      <TextBlock Classes="h1" Text="Validate" />
+      <TextBlock Classes="body"
+                 Text="Check a licence against a public key: whether its signature holds, whether it is still in its window, and what it says." />
+
+      <controls:SettingsCardExpander Header="Files"
+                                     Description="The licence to check, and the public key it should have been signed with."
+                                     IconData="{ei:IconGeometry FileMagnifyingGlass}"
+                                     IsExpanded="True">
+        <StackPanel Spacing="12">
+
+          <editors:TextEditor Title="Licence file"
+                              Text="{Binding LicensePath}"
+                              PlaceholderText="The licence a customer was sent…"
+                              HasValidationError="{Binding LicensePathHasError, Mode=OneWay}"
+                              ValidationErrorMessage="Required">
+            <editors:TextEditor.ActionContent>
+              <Button Content="Browse…"
+                      Command="{Binding BrowseLicensePathCommand}"
+                      Padding="6,2"
+                      FontSize="12" />
+            </editors:TextEditor.ActionContent>
+          </editors:TextEditor>
+
+          <editors:TextEditor Title="Public key file"
+                              Text="{Binding PublicKeyPath}"
+                              PlaceholderText="The half that ships inside the application…"
+                              HasValidationError="{Binding PublicKeyPathHasError, Mode=OneWay}"
+                              ValidationErrorMessage="Required">
+            <editors:TextEditor.ActionContent>
+              <Button Content="Browse…"
+                      Command="{Binding BrowsePublicKeyPathCommand}"
+                      Padding="6,2"
+                      FontSize="12" />
+            </editors:TextEditor.ActionContent>
+          </editors:TextEditor>
+
+          <TextBlock Classes="hint"
+                     Text="It has to be the public half. The private one is refused rather than used: an application that verifies with a signing key ships the ability to mint its own licences." />
+
+        </StackPanel>
+      </controls:SettingsCardExpander>
+
+      <controls:SettingsCardExpander Header="Expectations"
+                                     Description="What the licence has to match. Both are optional."
+                                     IconData="{ei:IconGeometry Target}"
+                                     IsExpanded="True">
+        <StackPanel Spacing="12">
+
+          <editors:TextEditor Title="Product"
+                              Text="{Binding ExpectedProductId}"
+                              PlaceholderText="The identifier the application would ask about" />
+
+          <editors:TextEditor Title="Device"
+                              Text="{Binding ExpectedDeviceId}"
+                              PlaceholderText="The machine the licence should be usable on">
+            <editors:TextEditor.ActionContent>
+              <Button Content="This machine"
+                      Command="{Binding UseThisMachineCommand}"
+                      Padding="6,2"
+                      FontSize="12"
+                      ToolTip.Tip="Fill this in with the identifier of the machine you are on" />
+            </editors:TextEditor.ActionContent>
+          </editors:TextEditor>
+
+          <TextBlock Classes="hint"
+                     Text="An empty field skips that check, and skipping means passing rather than failing: with the device field empty, a licence locked to another machine still validates here. Applications that lock licences to a device have to pass one on every call, and this is where that is worth reproducing." />
+
+          <TextBlock Classes="hint"
+                     Text="A licence may use * to cover a range of versions. The wildcard is only ever honoured on the licence's side — what you type here is matched literally." />
+
+        </StackPanel>
+      </controls:SettingsCardExpander>
+
+      <Button Classes="accent"
+              Content="Check the licence"
+              Command="{Binding ValidateLicenseCommand}"
+              HorizontalAlignment="Right" />
+
+      <!-- The verdict. Painted by the severity, which arrives as three bound style classes: green for a licence
+           that passed, amber for one that is authentic but does not apply here, red for a document that cannot
+           be trusted at all. Only one of the three icons is ever visible, which is why each carries its own
+           brush inline rather than needing a style per severity. -->
+      <Border Classes="verdict"
+              Classes.success="{Binding Verdict.IsSuccess}"
+              Classes.warning="{Binding Verdict.IsWarning}"
+              Classes.error="{Binding Verdict.IsError}"
+              IsVisible="{Binding HasVerdict}">
+        <StackPanel Spacing="8">
+
+          <StackPanel Orientation="Horizontal" Spacing="10">
+
+            <PathIcon Data="{ei:IconGeometry CheckCircle}"
+                      Width="20"
+                      Height="20"
+                      VerticalAlignment="Center"
+                      Foreground="{DynamicResource EnigmaSuccessBrush}"
+                      IsVisible="{Binding Verdict.IsSuccess}" />
+
+            <PathIcon Data="{ei:IconGeometry Warning}"
+                      Width="20"
+                      Height="20"
+                      VerticalAlignment="Center"
+                      Foreground="{DynamicResource EnigmaWarningBrush}"
+                      IsVisible="{Binding Verdict.IsWarning}" />
+
+            <PathIcon Data="{ei:IconGeometry XCircle}"
+                      Width="20"
+                      Height="20"
+                      VerticalAlignment="Center"
+                      Foreground="{DynamicResource EnigmaErrorBrush}"
+                      IsVisible="{Binding Verdict.IsError}" />
+
+            <TextBlock Classes="verdict" Text="{Binding Verdict.Headline}" VerticalAlignment="Center" />
+
+          </StackPanel>
+
+          <TextBlock Classes="body" Text="{Binding Verdict.Explanation}" />
+
+          <SelectableTextBlock Classes="hint"
+                               Text="{Binding Verdict.Detail}"
+                               IsVisible="{Binding Verdict.HasDetail}" />
+
+        </StackPanel>
+      </Border>
+
+      <!-- What the document says about itself, as opposed to what the licence inside it says. Both fields sit
+           outside the signature, and on a signature failure they are the diagnosis: a fingerprint that is not
+           the one you are checking against means the wrong key, not a forged licence. -->
+      <Border Classes="card" IsVisible="{Binding HasDocumentDetails}">
+        <StackPanel Spacing="8">
+
+          <TextBlock Classes="h2" Text="The document" />
+
+          <TextBlock Classes="field" Text="Signature scheme" />
+          <SelectableTextBlock Classes="value mono" Text="{Binding DocumentAlgorithm}" />
+
+          <TextBlock Classes="field" Text="Signed with" />
+          <SelectableTextBlock Classes="value mono" Text="{Binding DocumentKeyId}" />
+
+          <TextBlock Classes="hint"
+                     Text="The scheme named here is what selects the verifier, so rewriting it makes the signature fail to verify rather than letting a weaker one through. The fingerprint is an identifier only: it says which pair claims to have signed, and nothing but the verdict above settles whether one did." />
+
+        </StackPanel>
+      </Border>
+
+      <!-- Everything the licence says, shown whenever the payload was readable — including on a failure, which
+           is what turns "invalid" into "this is for another product". -->
+      <Border Classes="card" IsVisible="{Binding HasSummary}">
+        <StackPanel Spacing="8">
+
+          <TextBlock Classes="h2" Text="The licence" />
+
+          <TextBlock Classes="hint"
+                     IsVisible="{Binding !Verdict.IsSuccess}"
+                     Foreground="{DynamicResource EnigmaWarningBrush}"
+                     Text="This licence did not pass, so nothing below has been vouched for. It is safe to read and not something to act on." />
+
+          <TextBlock Classes="field" Text="Identifier" />
+          <SelectableTextBlock Classes="value mono" Text="{Binding Summary.Id}" />
+
+          <TextBlock Classes="field" Text="Product" />
+          <SelectableTextBlock Classes="value mono" Text="{Binding Summary.ProductId}" />
+
+          <TextBlock Classes="field" Text="Owner" />
+          <SelectableTextBlock Classes="value" Text="{Binding Summary.Owner}" />
+
+          <TextBlock Classes="field" Text="Issued" />
+          <SelectableTextBlock Classes="value mono" Text="{Binding Summary.CreatedAt}" />
+
+          <TextBlock Classes="field" Text="Valid from" />
+          <SelectableTextBlock Classes="value mono" Text="{Binding Summary.ValidFrom}" />
+
+          <TextBlock Classes="field" Text="Valid until" />
+          <SelectableTextBlock Classes="value mono" Text="{Binding Summary.ValidUntil}" />
+
+          <TextBlock Classes="field" Text="Device" />
+          <SelectableTextBlock Classes="value mono" Text="{Binding Summary.DeviceId}" />
+
+          <StackPanel Spacing="4" IsVisible="{Binding Summary.HasFeatures}">
+            <TextBlock Classes="field" Text="Features" />
+            <ItemsControl ItemsSource="{Binding Summary.Features}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="sys:String">
+                  <SelectableTextBlock Classes="value mono" Text="{Binding}" />
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+
+          <StackPanel Spacing="4" IsVisible="{Binding Summary.HasClaims}">
+            <TextBlock Classes="field" Text="Claims" />
+            <ItemsControl ItemsSource="{Binding Summary.Claims}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:LicenseClaimEntry">
+                  <Grid ColumnDefinitions="Auto,*" Margin="0,2">
+                    <SelectableTextBlock Classes="field mono" Text="{Binding Key}" VerticalAlignment="Center" />
+                    <SelectableTextBlock Grid.Column="1"
+                                         Classes="value"
+                                         Text="{Binding Value}"
+                                         VerticalAlignment="Center" />
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+
+          <TextBlock Classes="hint"
+                     Text="Times are local, with the offset. &quot;Valid until&quot; is the first instant the licence is no longer usable, so a licence issued through the end of a day shows midnight on the next one." />
+
+        </StackPanel>
+      </Border>
+
+    </StackPanel>
+  </ScrollViewer>
+
+</UserControl>

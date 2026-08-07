@@ -1,0 +1,75 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <!-- net10.0 only, unlike the library: this is an application rather than a package, so nothing is
+         gained by reaching back to older runtimes — and Enigma.Avalonia.Desktop's own floor is net8.0
+         while Avalonia 12 targets the modern runtime anyway. -->
+    <TargetFramework>net10.0</TargetFramework>
+    <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <!-- Embeds the icon in the Windows .exe (Windows-only; ignored for the linux-x64 binary). The
+         runtime titlebar/taskbar icon on every platform comes from MainWindow's Icon attribute. -->
+    <ApplicationIcon>Assets/appicon.ico</ApplicationIcon>
+    <!-- Ships the XML doc file so the app's own types are documented on the same terms as the library's:
+         with TreatWarningsAsErrors on, a missing comment on a public member is a build error. The app is
+         never packed, so this is a discipline setting rather than a packaging one. -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- The app's release version, set here rather than solution-wide: Directory.Build.props declares no
+         <Version> because the library and the app version independently. It happens to match the SDK
+         default the app carried until FEATURE-57BC-PHASE01, so nothing observable moves — but it is now
+         a stated fact rather than a default, which is what the settings page's about section reports,
+         what app.manifest's assemblyIdentity records, and what PHASE04's publish scripts read back with
+         `dotnet msbuild -getProperty:Version` to name the distribution zips. -->
+    <Version>1.0.0</Version>
+  </PropertyGroup>
+  <!-- LangVersion / Nullable / ImplicitUsings / TreatWarningsAsErrors come from Directory.Build.props;
+       package versions from Directory.Packages.props (Central Package Management). -->
+  <ItemGroup>
+    <AvaloniaResource Include="Assets/**" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Avalonia" />
+    <PackageReference Include="Avalonia.Desktop" />
+    <PackageReference Include="Avalonia.Themes.Fluent" />
+    <PackageReference Include="Avalonia.Fonts.Inter" />
+    <!-- Avalonia.Diagnostics was removed in Avalonia 12; DiagnosticsSupport replaces it and is stripped
+         out of non-Debug builds, so the developer tools never ship in a release binary. -->
+    <PackageReference Include="AvaloniaUI.DiagnosticsSupport">
+      <IncludeAssets Condition="'$(Configuration)' != 'Debug'">None</IncludeAssets>
+      <PrivateAssets Condition="'$(Configuration)' != 'Debug'">All</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="CommunityToolkit.Mvvm" />
+    <!-- The house control library: its Fluent theme dictionary, navigation shell, dialog/overlay/info-bar
+         services, picker services and settings cards. Enigma.Icons.Avalonia supplies the Geometry every
+         icon slot in that library takes; the two packages beneath it (the icon model and the Phosphor
+         artwork) would arrive transitively and are referenced explicitly to keep the version visible here
+         rather than inherited. -->
+    <PackageReference Include="Enigma.Avalonia.Desktop" />
+    <PackageReference Include="Enigma.Icons" />
+    <PackageReference Include="Enigma.Icons.Phosphor" />
+    <PackageReference Include="Enigma.Icons.Avalonia" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Console" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Debug" />
+  </ItemGroup>
+  <!-- The library this application is a front end for. It is consumed exclusively through its public
+       services — AddEnigmaLicensing() registers all four — so the app sees the same surface a third-party
+       consumer would. -->
+  <ItemGroup>
+    <ProjectReference Include="../Enigma.Licensing/Enigma.Licensing.csproj" />
+  </ItemGroup>
+  <!-- SkiaSharp and HarfBuzz ship debug symbols for their *native* libraries in the runtime assets
+       (win-x64: libSkiaSharp.pdb 84 MB + libHarfBuzzSharp.pdb 21 MB). They are of no use to anyone running
+       the app and more than double the published artifact, so they are dropped here rather than in the
+       publish scripts — that way every publish is clean, however it was invoked. The *managed* .pdb files
+       are left to the invoking build, since they are the useful kind: scripts/publish.* pass
+       -p:DebugType=none so a distributed zip carries none, while an ordinary publish keeps them. -->
+  <Target Name="TrimNativeSymbolsFromPublish" AfterTargets="ComputeResolvedFilesToPublishList">
+    <ItemGroup>
+      <ResolvedFileToPublish
+          Remove="@(ResolvedFileToPublish)"
+          Condition="'%(ResolvedFileToPublish.Extension)' == '.pdb' AND '%(ResolvedFileToPublish.AssetType)' == 'native'" />
+    </ItemGroup>
+  </Target>
+</Project>
