@@ -1,0 +1,25 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:Enigma.Licensing.Desktop.ViewModels"
+             mc:Ignorable="d"
+             x:Class="Enigma.Licensing.Desktop.Views.GenerateLicenseView"
+             x:DataType="vm:GenerateLicenseViewModel">
+
+  <ScrollViewer>
+    <StackPanel Classes="page">
+
+      <TextBlock Classes="h1" Text="Generate" />
+      <TextBlock Classes="body"
+                 Text="Fill in a licence, sign it with a private key and save the envelope. A profile keeps the form and the signing key's path for the next issue — never the password." />
+
+      <Border Classes="card">
+        <TextBlock Classes="hint"
+                   Text="The licence form, the features and claims editors and the licence profiles arrive with a later phase of this application." />
+      </Border>
+
+    </StackPanel>
+  </ScrollViewer>
+
+</UserControl>

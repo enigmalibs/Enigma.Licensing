@@ -1,6 +1,6 @@
 # FEATURE-179C — Desktop application
 
-**Status:** TODO
+**Status:** IN PROGRESS
 **Type:** multi-phase (4 phases, one branch per phase: `feature/feature-179c-phaseNN-<slug>`)
 **Depends on:** FEATURE-03A9 (the app consumes the library's public services)
 
@@ -61,7 +61,7 @@ app pattern exactly.
 
 ---
 
-## PHASE01 — App shell, hosting, theme & settings — **TODO**
+## PHASE01 — App shell, hosting, theme & settings — **DONE**
 
 Branch: `feature/feature-179c-phase01-shell`
 

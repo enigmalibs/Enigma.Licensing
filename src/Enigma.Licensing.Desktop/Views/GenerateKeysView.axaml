@@ -1,0 +1,25 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:Enigma.Licensing.Desktop.ViewModels"
+             mc:Ignorable="d"
+             x:Class="Enigma.Licensing.Desktop.Views.GenerateKeysView"
+             x:DataType="vm:GenerateKeysViewModel">
+
+  <ScrollViewer>
+    <StackPanel Classes="page">
+
+      <TextBlock Classes="h1" Text="Keys" />
+      <TextBlock Classes="body"
+                 Text="Generate the signing key pair a licence is signed with. The private half signs; the public half ships inside the application that checks the licence." />
+
+      <Border Classes="card">
+        <TextBlock Classes="hint"
+                   Text="The algorithm and key-size pickers, the optional private-key password and the save dialogs arrive with the next phase of this application." />
+      </Border>
+
+    </StackPanel>
+  </ScrollViewer>
+
+</UserControl>

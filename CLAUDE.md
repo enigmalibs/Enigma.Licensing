@@ -14,12 +14,14 @@ public-surface guard test**. See *Shipped* below.
 **`FEATURE-03A9` is complete — the library is feature-done.** It signs and checks licenses end to end,
 all six algorithms round-trip through save → load → validate, all four services are DI-registrable, and
 a reflection guard enforces that nothing but `Enigma.Licensing` types reach the public surface.
-Everything in *Architecture & conventions* below now describes **code, not design**; the only things
-still marked planned are the four directories `FEATURE-179C` and `FEATURE-57BC` create. Never write a
+Everything in *Architecture & conventions* below now describes **code, not design**. Never write a
 doc, comment or summary that describes a planned type as if it already ships.
 
-The next work item is `FEATURE-179C` (the Avalonia desktop app), then `FEATURE-57BC` (the v1.0.0
-release). Read the plan file in `docs/plan/` before implementing any of it; the plan is the contract.
+`FEATURE-179C` (the Avalonia desktop app) is **in progress**: `PHASE01` shipped the **app shell,
+hosting, theme and settings** — the app runs, navigates and remembers its colour variant, with the Keys,
+Generate and Validate pages as deliberate placeholders. `PHASE02`–`PHASE04` fill those three in, in that
+order, and then `FEATURE-57BC` is the v1.0.0 release. Read the plan file in `docs/plan/` before
+implementing any of it; the plan is the contract.
 
 **One decision is due and deliberately outstanding:** the library is not trim/AOT-safe, because
 serialization is reflection-based. `FEATURE-03A9-PHASE04` was the point at which the model became
@@ -33,7 +35,8 @@ it.
 **Enigma.Licensing** is a .NET library that generates signed software licenses and imports, checks
 and validates them, signing with RSA or post-quantum ML-DSA keys. All cryptography comes from
 [Enigma.Core](https://www.nuget.org/packages/Enigma.Core) 1.1.0. A companion Avalonia desktop app
-(`FEATURE-179C`) will give the issuer a UI for the same operations.
+(`src/Enigma.Licensing.Desktop`, `FEATURE-179C`) gives the issuer a UI for the same operations; its
+shell ships and its three workflow pages are being filled in phase by phase.
 
 It is the successor to **Enigma.LicenseManager** (v1.2.0, which stays on NuGet for legacy
 consumers). It is a **clean break**: the license and key formats are new, and there is deliberately
@@ -237,6 +240,59 @@ Types in place: `EnigmaLicensingServiceCollectionExtensions` (namespace
 `Microsoft.Extensions.DependencyInjection`, in the `Enigma.Licensing` assembly). No new library types
 otherwise — this phase's other half was the XML-doc and API review pass, which found nothing to change.
 
+### Desktop app shell, hosting, theme & settings (FEATURE-179C-PHASE01)
+
+`src/Enigma.Licensing.Desktop` — an Avalonia 12.1.1 app on **Enigma.Avalonia.Desktop 1.0.0**, net10.0
+only, following the Enigma.HardCopy structure. It runs: a navigation rail (Keys / Generate / Validate,
+with Settings pinned to the footer), a complete Settings page, and three placeholder pages that
+`PHASE02`–`PHASE04` fill in. **The library is nothing but a dependency of it** — the app consumes the same
+public surface a third-party consumer would.
+
+- **`App` owns the `IHost`, `Program.cs` owns nothing.** `Program` stays synchronous —
+  `BuildAvaloniaApp().StartWithClassicDesktopLifetime` — and the host is built in
+  `OnFrameworkInitializationCompleted`, started (never *run*: Avalonia's lifetime runs the app), and
+  stopped from `desktop.Exit`. The window is **resolved** from the container rather than constructed,
+  because the control library's services need that very window's hosts and storage provider.
+- **Five one-time handovers happen before the window is shown**: `RegisterHost` for Overlay, ContentDialog
+  and InfoBar, `SetStorageProvider` for the file and folder pickers. Each of those services throws
+  `InvalidOperationException` from its first call otherwise, and the first call is a user clicking a
+  button. In `MainWindow.axaml` the three hosts are the **last** children of the root `Panel`, ordered
+  **Overlay → ContentDialog → InfoBar** — deliberately *not* the library guide's order, so a dialog raised
+  during a long operation is never painted under the overlay's scrim.
+- **The stored theme is applied before the first frame**, so the app never flashes the OS variant and then
+  corrects itself. `App.axaml` declares `RequestedThemeVariant="Default"`, which is also what
+  `AppTheme.System` and an unreadable preference file leave it as.
+- **Two registration extensions, in two files, on purpose.** `AddEnigmaAvaloniaDesktop()` registers the
+  control library's six services (`TryAddSingleton`; it ships none of its own);
+  `AddEnigmaLicensingDesktop()` registers everything else and calls the library's own
+  **`AddEnigmaLicensing()`** rather than re-registering its four services by hand — that is what keeps the
+  app on the library's composition, including the store's explicit validator factory. The split, and
+  `App.axaml.cs`'s `AppTheming` alias, exist because `Enigma.Avalonia.Desktop.Services` and
+  `Enigma.Licensing.Desktop.Services` will both declare an `IFileDialogService` from `PHASE02`. Keep them.
+- **Page views are transient, page ViewModels singleton.** A ViewModel holds work in progress that must
+  survive leaving a page; a fresh control per navigation is what stops the visual tree leaking. Swapping
+  either lifetime looks like a working app and silently breaks one of the two. Asserted by
+  `ServiceCollectionExtensionsTests` as descriptors, since neither can be resolved without a platform.
+- **`AppSettingsStore` never throws.** Missing, unreadable, truncated, hand-edited, or written by a newer
+  `formatVersion` all resolve to the defaults plus a log line; a save writes a sibling temp file and moves
+  it over the target. The file is `ApplicationData/Enigma.Licensing/settings.json`, and **appearance is the
+  only thing in it** — no key path, and never a password.
+- **Visiting Settings must not repaint or rewrite.** `SettingsViewModel` reads the stored variant into the
+  backing field, not through the setter, because `App` has already applied it. A change applies and
+  persists **exactly once**; a re-selection and a null from the selector do neither.
+- **Strings are inline; there is no `.resx`** (validated decision, matching Enigma.Backup, Draw and the
+  predecessor desktop app — HardCopy is the outlier). `Resources/AppInfo.cs` holds the title, the project
+  URL and the two versions, read from the running assemblies so an about box cannot drift from the build.
+- **`GenerateDocumentationFile` is on for the app too**, so a missing XML comment on a public member is a
+  build error here as well. Note that Avalonia declares `DataContext` on `StyledElement`, not
+  `Control`/`Window` — a cref naming the wrong one is `CS1574`.
+
+Types in place: `Program`, `App`, `MainWindow` + the four page views, `MainWindowViewModel`,
+`SettingsViewModel`, `ThemeOption`, the three placeholder page ViewModels, `IThemeService`/`ThemeService`,
+`AppSettings`/`IAppSettingsStore`/`AppSettingsStore`/`AppTheme`, `AppIcons`, `AppInfo`, and the two
+hosting extensions. The app-own wrappers over the info bar, the overlay and the file picker land with
+`PHASE02`, which is the first phase with a caller for them.
+
 ## Architecture & conventions
 
 These hold across the whole library, and everything here **ships** — `FEATURE-03A9` is complete, so no
@@ -366,7 +422,32 @@ src/Enigma.Licensing/                The library
   Keys/KeyKind.cs                    Public or private half
   Keys/LicensingKey.cs               A parsed key + LicensingKey.CurrentFormat; material stays internal
   Keys/LicensingKeyPair.cs           Both halves, as generation returns them
-src/Enigma.Licensing.Desktop/        planned — Avalonia issuer app (FEATURE-179C-PHASE01)
+src/Enigma.Licensing.Desktop/        The Avalonia issuer app (net10.0)
+  Program.cs                         Synchronous entry point; the host is built in App, not here
+  App.axaml(.cs)                     Theme merge + style classes; owns the IHost and the startup wiring
+  app.manifest                       Per-monitor-v2 DPI awareness (version bumped at release time)
+  Assets/appicon.ico                 Placeholder branding, reused from the predecessor app
+  Hosting/EnigmaAvaloniaServiceCollectionExtensions.cs   AddEnigmaAvaloniaDesktop() — the library's six
+  Hosting/ServiceCollectionExtensions.cs                 AddEnigmaLicensingDesktop() — + AddEnigmaLicensing()
+  Resources/AppIcons.cs              The four Phosphor rail outlines, resolved once each
+  Resources/AppInfo.cs               Title, project URL, app & library versions read from the assemblies
+  Services/IThemeService.cs          Repaint the app — the seam that keeps Avalonia out of the ViewModels
+  Services/ThemeService.cs           The only place that assigns RequestedThemeVariant
+  Settings/AppTheme.cs               System / Light / Dark
+  Settings/AppSettings.cs            The preference file's shape + its formatVersion
+  Settings/IAppSettingsStore.cs      Load/Save — neither may throw into the application
+  Settings/AppSettingsStore.cs       ApplicationData/Enigma.Licensing/settings.json, temp-then-move
+  ViewModels/MainWindowViewModel.cs  The rail: three workflows + settings in the footer; navigates nowhere
+  ViewModels/ThemeOption.cs          One appearance choice: an AppTheme and the words offering it
+  ViewModels/SettingsViewModel.cs    Apply-and-persist exactly once, plus the about section
+  ViewModels/GenerateKeysViewModel.cs      placeholder — filled by FEATURE-179C-PHASE02
+  ViewModels/GenerateLicenseViewModel.cs   placeholder — filled by FEATURE-179C-PHASE03
+  ViewModels/ValidateLicenseViewModel.cs   placeholder — filled by FEATURE-179C-PHASE04
+  Views/MainWindow.axaml(.cs)        NavigationView + the three service hosts, last in the root Panel
+  Views/SettingsView.axaml(.cs)      Appearance SettingsCard + the About expander
+  Views/GenerateKeysView.axaml(.cs)        placeholder page
+  Views/GenerateLicenseView.axaml(.cs)     placeholder page
+  Views/ValidateLicenseView.axaml(.cs)     placeholder page
 tests/Enigma.Licensing.UnitTests/    xUnit v3 test suite
   SmokeTest.cs                       Toolchain smoke test
   LicenseTestData.cs                 Deterministic shared fixtures (no UtcNow — output is pinned)
@@ -378,7 +459,12 @@ tests/Enigma.Licensing.UnitTests/    xUnit v3 test suite
   Internal/                          Tests over the internal seams (needs InternalsVisibleTo)
   Keys/                              Key generation, storage & encryption + their shared fixtures
   Model/                             Tests over the records
-tests/Enigma.Licensing.Desktop.UnitTests/   planned (FEATURE-179C-PHASE01)
+tests/Enigma.Licensing.Desktop.UnitTests/   xUnit v3 test suite for the app (net10.0)
+  Hosting/                           The container wiring: what is registered, and with which lifetime
+  Settings/                          The preference file and every way it can be useless
+  ViewModels/                        The rail's composition, the appearance selector, ThemeOption
+  Resources/                         AppInfo's shape (a version, no build metadata, an https project URL)
+  TestDoubles/                       RecordingLogger, FakeAppSettingsStore, FakeThemeService
 docs/roadmap.md                      Work-item registry
 docs/plan/                           Per-item plans
 docs/done/                           Per-dev completion records
@@ -393,9 +479,9 @@ There is **no CI workflow**, deliberately — consistent with every sibling Enig
 - The library multi-targets **`netstandard2.0;net8.0;net10.0`** — it ships as a NuGet package, and
   the broad floor mirrors Enigma.Core so no Enigma.Core consumer is excluded (Enigma.DataEncryption
   precedent). The reason is recorded in a csproj comment; keep it there.
-- Test projects target **`net8.0;net10.0`**. `netstandard2.0` is never a test TFM; its polyfill
-  surface is exercised through the `net8.0` paths. The planned desktop app and its test project are
-  **net10.0** only.
+- The library's test project targets **`net8.0;net10.0`**. `netstandard2.0` is never a test TFM; its
+  polyfill surface is exercised through the `net8.0` paths. The desktop app and its test project are
+  **net10.0** only — an application, not a package, so nothing is gained by reaching back.
 - **Currently pinned** in `Directory.Packages.props` — only what the code actually references:
   `Enigma.Core` 1.1.0, `Microsoft.Extensions.DependencyInjection.Abstractions` 9.0.18, `Ulid` 1.4.1 and
   `DeviceId` 6.11.0 (all three TFMs), `PolySharp` 1.16.0,
@@ -430,10 +516,20 @@ There is **no CI workflow**, deliberately — consistent with every sibling Enig
   net8.0+, and both for the same release-time licence audit as PlatformAbstractions.
 - **Runtime dependencies, final for the library: Enigma.Core, Microsoft.Extensions.DependencyInjection.Abstractions,
   Ulid and DeviceId everywhere; System.Text.Json on netstandard2.0 only.** Nothing further is expected —
-  `FEATURE-03A9` is complete, so the next pin to land belongs to the desktop app.
-  Planned app dependencies: Avalonia 12.1.1 (the coupled Avalonia set is bumped only as a unit),
-  Enigma.Avalonia.Desktop 1.0.0, Enigma.Icons / Enigma.Icons.Phosphor / Enigma.Icons.Avalonia 1.0.0,
-  CommunityToolkit.Mvvm 8.4.2, Microsoft.Extensions.Hosting 10.0.10.
+  `FEATURE-03A9` is complete.
+- **The desktop app's pins landed with `FEATURE-179C-PHASE01`** and are expected to be its whole set:
+  `Microsoft.Extensions.Hosting` / `.Logging.Console` / `.Logging.Debug` 10.0.10, and the
+  **version-coupled** group — `Avalonia`, `Avalonia.Desktop`, `Avalonia.Themes.Fluent`,
+  `Avalonia.Fonts.Inter` 12.1.1, `AvaloniaUI.DiagnosticsSupport` 2.2.3, `CommunityToolkit.Mvvm` 8.4.2,
+  `Enigma.Avalonia.Desktop` 1.0.0 and `Enigma.Icons` / `.Phosphor` / `.Avalonia` 1.0.0. **Bump that group
+  as a unit, never one package at a time**: the control library pins Avalonia 12.1.1 and
+  CommunityToolkit.Mvvm 8.4.2 itself, and Enigma.Icons.Avalonia needs Avalonia ≥ 12.1.0. Five of them
+  (Avalonia, Avalonia.Themes.Fluent, CommunityToolkit.Mvvm, Enigma.Icons, Enigma.Icons.Phosphor) would
+  arrive transitively and are pinned explicitly anyway, house convention, so the version is visible rather
+  than inherited. `AvaloniaUI.DiagnosticsSupport` replaces `Avalonia.Diagnostics`, removed in Avalonia 12,
+  and the app csproj strips it from every non-Debug build. `Enigma.Avalonia.Desktop` also brings
+  `Enigma.Core` (≥ 1.0.0) transitively, behind its binary editors; the graph closes on the 1.1.0 the
+  library pins, so there is one Enigma.Core and one BouncyCastle in the app.
 - **Add a pin when the reference actually lands**, not in advance — and never put `Version=` on a
   `<PackageReference>`; all versions live in `Directory.Packages.props`.
 
@@ -453,13 +549,29 @@ Note the `--solution` flag: on the .NET 10 SDK in MTP mode, `dotnet test <Soluti
 rejected.
 
 Zero-warning builds are enforced (`TreatWarningsAsErrors=true`, `EnforceCodeStyleInBuild=true`), so
-any warning fails the build. XAML (`AVLN…`) warnings bypass `TreatWarningsAsErrors`, so once the
-desktop app exists its warning count has to be checked by reading the build output.
+any warning fails the build. **XAML (`AVLN…`) warnings bypass `TreatWarningsAsErrors`** and are emitted
+from an MSBuild task, so the desktop app can print `Build succeeded` while carrying them. Check by hand
+after touching any `.axaml`:
+
+```bash
+DOTNET_ROOT=~/.dotnet dotnet build src/Enigma.Licensing.Desktop/Enigma.Licensing.Desktop.csproj \
+  -c Release --no-incremental -v normal | grep -c AVLN     # must print 0
+```
+
+`GenerateDocumentationFile` is on for the app as well as the library, so a missing XML comment on a
+public member fails the build in both.
 
 Tests are **MTP-native**: `xunit.v3` + `coverlet.collector`, with **no** `Microsoft.NET.Test.Sdk`
 and **no** `xunit.runner.visualstudio` — both break the Microsoft Testing Platform. `Xunit` is the
-only implicit using in the test project. Test fixtures are copied by a `**/*.json` + `**/*.txt`
-`PreserveNewest` glob.
+only implicit using in each test project. Test fixtures are copied by a `**/*.json` + `**/*.txt`
+`PreserveNewest` glob (library suite only — the desktop suite loads no fixture files).
+
+**The desktop suite stands up no Avalonia platform.** Anything needing one — `MainWindow`, the page
+views, and `MainWindowViewModel`'s icon factory (a Phosphor glyph becomes a `StreamGeometry`, which needs
+the platform render interface) — is asserted as a *service descriptor* rather than resolved, and the
+shell ViewModel takes its rail icons as `Geometry` arguments precisely so a test can pass a
+`PathGeometry` sentinel. Keep that seam; the alternative is a headless-Avalonia dependency for four
+assertions.
 
 The xunit.v3 analyzers run at warning level, so under `TreatWarningsAsErrors` **they are build
 errors**. The one that bites constantly is `xUnit1051`: any call taking a `CancellationToken` must be
@@ -468,7 +580,8 @@ and `DependencyInjection/` each keep a
 `private static CancellationToken Token => TestContext.Current.CancellationToken;`
 for this — copy that pattern rather than suppressing the rule.
 
-**Key generation is the expensive part of the suite** (most of the ~13 s run over 836 cases): ten RSA
+**Key generation is the expensive part of the suite** (most of the ~13 s run over 918 cases — 836 in the
+library suite, 82 in the desktop one, which costs half a second): ten RSA
 pairs, one at 4096 bits, plus Argon2id at 64 MiB per encrypted round-trip. Two collection fixtures exist
 so nothing generates a key it does not need to:
 
@@ -486,11 +599,12 @@ Both follow from `TreatWarningsAsErrors=true`. Recognise them before hunting for
 isn't there:
 
 - **`NETSDK1138` — net8.0 leaves support on 2026-11-10.** The SDK's end-of-life target-framework
-  check is skipped for `Library` projects but live for `Exe`, so it applies to the **test project
-  only**, never to the library. The first SDK release that adds `8.0` to
-  `_EolNetCoreTargetFrameworkVersions` turns the test project's net8.0 leg into an error. Fix then:
-  drop `net8.0` from the test project, or set `CheckEolTargetFramework` to false there. A comment at
-  the property records this.
+  check is skipped for `Library` projects but live for `Exe`, so it applies to
+  **`Enigma.Licensing.UnitTests` alone**: it is the only project in the solution that is both an
+  executable and targets net8.0 (the library is a `Library`; the app and its test project are net10.0
+  only). The first SDK release that adds `8.0` to `_EolNetCoreTargetFrameworkVersions` turns that
+  project's net8.0 leg into an error. Fix then: drop `net8.0` there, or set `CheckEolTargetFramework`
+  to false. A comment at the property records this.
 - **`NU1901`–`NU1904` — NuGet auditing.** Restore warnings are errors here too, auditing defaults to
   on at `low` severity, and on the net10.0 leg it audits the **transitive** closure. A newly
   published advisory against any pinned package — or anything it drags in — fails the build with no
@@ -552,4 +666,4 @@ written. Commits are left to the maintainer.
 
 The sequence is a hard dependency chain: `FEATURE-2FE8` (repo skeleton — **done**) →
 `FEATURE-03A9` (licensing core library, 4 phases — **all done**) → `FEATURE-179C` (desktop app,
-4 phases — **next**) → `FEATURE-57BC` (v1.0.0 release, 4 phases).
+4 phases — **PHASE01 done, PHASE02 next**) → `FEATURE-57BC` (v1.0.0 release, 4 phases).

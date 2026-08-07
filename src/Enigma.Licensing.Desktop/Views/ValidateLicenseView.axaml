@@ -1,0 +1,25 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:Enigma.Licensing.Desktop.ViewModels"
+             mc:Ignorable="d"
+             x:Class="Enigma.Licensing.Desktop.Views.ValidateLicenseView"
+             x:DataType="vm:ValidateLicenseViewModel">
+
+  <ScrollViewer>
+    <StackPanel Classes="page">
+
+      <TextBlock Classes="h1" Text="Validate" />
+      <TextBlock Classes="body"
+                 Text="Check a licence against a public key: whether its signature holds, whether it is still in its window, and what it says." />
+
+      <Border Classes="card">
+        <TextBlock Classes="hint"
+                   Text="The file pickers, the expected product and device inputs and the verdict display arrive with the last phase of this application." />
+      </Border>
+
+    </StackPanel>
+  </ScrollViewer>
+
+</UserControl>

@@ -1,8 +1,10 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/Enigma.Licensing/Enigma.Licensing.csproj" />
+    <Project Path="src/Enigma.Licensing.Desktop/Enigma.Licensing.Desktop.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Enigma.Licensing.UnitTests/Enigma.Licensing.UnitTests.csproj" />
+    <Project Path="tests/Enigma.Licensing.Desktop.UnitTests/Enigma.Licensing.Desktop.UnitTests.csproj" />
   </Folder>
 </Solution>

@@ -3,9 +3,7 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
   <!-- Only what the code actually references is pinned here. Every later dev adds its own pins when
-       the reference lands, not before: the desktop set — Avalonia 12.1.1 (version-coupled, bump as a
-       unit), Enigma.Avalonia.Desktop 1.0.0, Enigma.Icons/.Phosphor/.Avalonia 1.0.0,
-       CommunityToolkit.Mvvm 8.4.2, Microsoft.Extensions.Hosting 10.0.10 (FEATURE-179C). -->
+       the reference lands, not before. -->
   <!-- Library. Enigma.Core is the cryptographic engine behind every service here and is referenced on
        all three TFMs — it multi-targets exactly the same set. It brings BouncyCastle.Cryptography
        2.7.0 transitively; neither type may appear on this library's public surface. -->
@@ -39,6 +37,44 @@
     <PackageVersion Include="PolySharp" Version="1.16.0" />
     <PackageVersion Include="Ulid" Version="1.4.1" />
     <PackageVersion Include="DeviceId" Version="6.11.0" />
+  </ItemGroup>
+  <!-- Desktop app (FEATURE-179C). Hosting and logging first: Microsoft.Extensions.Hosting is what builds
+       the IHost that App.axaml.cs owns, and it is what brings Microsoft.Extensions.DependencyInjection —
+       the concrete container — into the app. The two logging sinks are the house pair: Console for a
+       terminal launch, Debug for an attached debugger. The app writes no log files (validated decision),
+       so no file sink is pinned. -->
+  <ItemGroup>
+    <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.10" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="10.0.10" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Debug" Version="10.0.10" />
+  </ItemGroup>
+  <!-- Desktop (Avalonia) — a version-coupled ecosystem: Avalonia, the Fluent theme, the Inter fonts and
+       the diagnostics support are bumped TOGETHER, never one package at a time, because mixing versions
+       within the set breaks the build. Enigma.Avalonia.Desktop 1.0.0 belongs to the same unit: it pins
+       Avalonia 12.1.1, Avalonia.Themes.Fluent 12.1.1 and CommunityToolkit.Mvvm 8.4.2 — exactly the
+       versions below — and Enigma.Icons.Avalonia needs Avalonia >= 12.1.0 for the same reason.
+
+       Avalonia, Avalonia.Themes.Fluent and CommunityToolkit.Mvvm arrive transitively through the control
+       library, and Enigma.Icons / Enigma.Icons.Phosphor through Enigma.Icons.Avalonia; all five are pinned
+       explicitly anyway (house convention) so the version is visible here rather than inherited.
+
+       AvaloniaUI.DiagnosticsSupport replaces Avalonia.Diagnostics, which was removed in Avalonia 12; the
+       app csproj strips it out of every non-Debug build.
+
+       Enigma.Avalonia.Desktop also brings Enigma.Core (>= 1.0.0) transitively, behind its Base64 and
+       hexadecimal editors. The graph closes on the 1.1.0 pinned above for the library, so there is one
+       Enigma.Core — and one BouncyCastle.Cryptography — in the app. -->
+  <ItemGroup>
+    <PackageVersion Include="Avalonia" Version="12.1.1" />
+    <PackageVersion Include="Avalonia.Desktop" Version="12.1.1" />
+    <PackageVersion Include="Avalonia.Themes.Fluent" Version="12.1.1" />
+    <PackageVersion Include="Avalonia.Fonts.Inter" Version="12.1.1" />
+    <PackageVersion Include="AvaloniaUI.DiagnosticsSupport" Version="2.2.3" />
+    <PackageVersion Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+    <PackageVersion Include="Enigma.Avalonia.Desktop" Version="1.0.0" />
+    <PackageVersion Include="Enigma.Icons" Version="1.0.0" />
+    <PackageVersion Include="Enigma.Icons.Phosphor" Version="1.0.0" />
+    <PackageVersion Include="Enigma.Icons.Avalonia" Version="1.0.0" />
   </ItemGroup>
   <!-- Tests (MTP-native: xunit.v3 only; coverlet.collector for coverage). No Microsoft.NET.Test.Sdk.
        Microsoft.Extensions.DependencyInjection is the concrete container — needed only to build a real

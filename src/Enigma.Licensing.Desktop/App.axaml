@@ -1,0 +1,103 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Enigma.Licensing.Desktop.App"
+             RequestedThemeVariant="Default">
+
+  <!-- No application-level DataTemplates: a page is declared once, as a NavigationItem carrying its view
+       type and its ViewModel type, and the navigation service's PageFactory resolves both from the
+       container. -->
+
+  <!-- The house control library's theme: one Color per variant, one SolidColorBrush per Color, and a
+       ControlTheme for every control the library ships. It has a ResourceDictionary root, so it is merged
+       here as a ResourceInclude — a StyleInclude fails the build with AVLN2000.
+
+       Every reference to an Enigma* brush below is a DynamicResource: each brush follows a
+       RequestedThemeVariant switch on its own, and a StaticResource freezes the colour at load so the
+       control stops following the variant.
+
+       Order matters inside MergedDictionaries: on a duplicate key the last dictionary wins, so any
+       dictionary of ours that overrides an Enigma* key has to be merged AFTER this one. -->
+  <Application.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.MergedDictionaries>
+        <ResourceInclude Source="avares://Enigma.Avalonia.Desktop/Themes/Fluent.axaml" />
+      </ResourceDictionary.MergedDictionaries>
+    </ResourceDictionary>
+  </Application.Resources>
+
+  <Application.Styles>
+    <!-- The base FluentTheme stays: the library declares a ControlTheme only for its own controls plus
+         TextBox and ComboBox, so dropping it would leave every other framework control — including the
+         ones nested inside the library's own templates — without a template. -->
+    <FluentTheme />
+
+    <!-- The application's whole visual vocabulary: a type scale, spacing and a card, over the library
+         theme's Enigma* brushes. It is not a restyling of the controls. TextBox and ComboBox are
+         deliberately absent — the library's dictionary restyles those two by overriding FluentTheme's own
+         TextControl* / ComboBox* keys, so hand-styling them here would only fight it. -->
+
+    <Style Selector="StackPanel.page">
+      <Setter Property="Margin" Value="24" />
+      <Setter Property="Spacing" Value="16" />
+      <Setter Property="MaxWidth" Value="880" />
+      <Setter Property="HorizontalAlignment" Value="Left" />
+    </Style>
+
+    <Style Selector="TextBlock.h1">
+      <Setter Property="FontSize" Value="22" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+
+    <Style Selector="TextBlock.h2">
+      <Setter Property="FontSize" Value="14" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+
+    <Style Selector="TextBlock.body">
+      <Setter Property="TextWrapping" Value="Wrap" />
+      <Setter Property="Foreground" Value="{DynamicResource EnigmaForegroundSecondaryBrush}" />
+    </Style>
+
+    <Style Selector="TextBlock.hint">
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+      <Setter Property="Foreground" Value="{DynamicResource EnigmaForegroundSecondaryBrush}" />
+    </Style>
+
+    <!-- :is(TextBlock), not TextBlock: SelectableTextBlock derives from it, and the about section sets a
+         key id and a version in text a user has to be able to copy. An exact-type selector misses it. -->
+    <Style Selector=":is(TextBlock).field">
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="MinWidth" Value="120" />
+      <Setter Property="Margin" Value="0,0,12,4" />
+    </Style>
+
+    <Style Selector=":is(TextBlock).value">
+      <Setter Property="TextWrapping" Value="Wrap" />
+      <Setter Property="Margin" Value="0,0,0,4" />
+    </Style>
+
+    <!-- A key fingerprint, a license id or a URL is read character by character, so it is set in a fixed
+         pitch with a fallback chain rather than a single family that only exists on one platform. -->
+    <Style Selector=":is(TextBlock).mono">
+      <Setter Property="FontFamily" Value="Cascadia Mono,Consolas,DejaVu Sans Mono,Liberation Mono,Menlo,monospace" />
+    </Style>
+
+    <Style Selector=":is(TextBox).mono">
+      <Setter Property="FontFamily" Value="Cascadia Mono,Consolas,DejaVu Sans Mono,Liberation Mono,Menlo,monospace" />
+      <Setter Property="FontSize" Value="12" />
+    </Style>
+
+    <Style Selector="Border.card">
+      <Setter Property="Background" Value="{DynamicResource EnigmaSurfaceBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource EnigmaBorderSubtleBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="6" />
+      <Setter Property="Padding" Value="16" />
+    </Style>
+
+  </Application.Styles>
+
+</Application>

@@ -1,0 +1,63 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:controls="using:Enigma.Avalonia.Desktop.Controls"
+             xmlns:ei="https://github.com/josueclement/Enigma.Icons"
+             xmlns:vm="using:Enigma.Licensing.Desktop.ViewModels"
+             mc:Ignorable="d"
+             x:Class="Enigma.Licensing.Desktop.Views.SettingsView"
+             x:DataType="vm:SettingsViewModel">
+
+  <!-- Built the way the library's settings cards are meant to be used: a stack of labelled rows, each an
+       icon, a header, a description and its control — no surrounding Border.card, because here the card IS
+       the row. -->
+
+  <ScrollViewer>
+    <StackPanel Classes="page">
+
+      <TextBlock Classes="h1" Text="Settings" />
+      <TextBlock Classes="body"
+                 Text="How the application looks, and what this build is made of. Nothing about a licence or a key is remembered here." />
+
+      <!-- Three choices, not a light/dark toggle: "follow the system" has to stay reachable, and a toggle
+           only offers it until the first click. The choice applies the moment it is made — there is no
+           Apply button and nothing to confirm, because looking at the result IS the confirmation. -->
+      <controls:SettingsCard Header="Appearance"
+                             Description="The colour variant the application is painted in. Remembered between runs."
+                             IconData="{ei:IconGeometry Palette}">
+        <ComboBox ItemsSource="{Binding Themes}"
+                  SelectedItem="{Binding SelectedTheme}"
+                  MinWidth="220">
+          <ComboBox.ItemTemplate>
+            <DataTemplate x:DataType="vm:ThemeOption">
+              <TextBlock Text="{Binding Label}" />
+            </DataTemplate>
+          </ComboBox.ItemTemplate>
+        </ComboBox>
+      </controls:SettingsCard>
+
+      <!-- The two versions are read from the running assemblies, so what is shown here is what is actually
+           loaded. Both are selectable: a bug report is worth nothing without them. -->
+      <controls:SettingsCardExpander Header="About"
+                                     Description="Versions and where the source lives."
+                                     IconData="{ei:IconGeometry Info}"
+                                     IsExpanded="True">
+        <StackPanel Spacing="2">
+
+          <TextBlock Classes="field" Text="Application" />
+          <SelectableTextBlock Classes="value mono" Text="{Binding AppVersion}" />
+
+          <TextBlock Classes="field" Text="Enigma.Licensing" />
+          <SelectableTextBlock Classes="value mono" Text="{Binding LibraryVersion}" />
+
+          <TextBlock Classes="field" Text="Project" />
+          <SelectableTextBlock Classes="value mono" Text="{Binding ProjectUrl}" />
+
+        </StackPanel>
+      </controls:SettingsCardExpander>
+
+    </StackPanel>
+  </ScrollViewer>
+
+</UserControl>
