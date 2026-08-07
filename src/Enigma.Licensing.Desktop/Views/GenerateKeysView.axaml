@@ -1,0 +1,152 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:controls="using:Enigma.Avalonia.Desktop.Controls"
+             xmlns:editors="using:Enigma.Avalonia.Desktop.Controls.Editors"
+             xmlns:ei="https://github.com/josueclement/Enigma.Icons"
+             xmlns:vm="using:Enigma.Licensing.Desktop.ViewModels"
+             mc:Ignorable="d"
+             x:Class="Enigma.Licensing.Desktop.Views.GenerateKeysView"
+             x:DataType="vm:GenerateKeysViewModel">
+
+  <!-- The page reads top to bottom as the decision order: what the pair is, whether the private half is
+       protected, where the two files go, and then the one button that does all of it. -->
+
+  <ScrollViewer>
+    <StackPanel Classes="page">
+
+      <TextBlock Classes="h1" Text="Keys" />
+      <TextBlock Classes="body"
+                 Text="Generate the signing key pair a licence is signed with. The private half signs and stays here; the public half ships inside the application that checks the licence." />
+
+      <controls:SettingsCardExpander Header="Algorithm"
+                                     Description="The signature scheme the pair belongs to, for life."
+                                     IconData="{ei:IconGeometry Key}"
+                                     IsExpanded="True">
+        <StackPanel Spacing="12">
+
+          <ComboBox ItemsSource="{Binding Algorithms}"
+                    SelectedItem="{Binding SelectedAlgorithm}"
+                    HorizontalAlignment="Stretch">
+            <ComboBox.ItemTemplate>
+              <DataTemplate x:DataType="vm:SignatureAlgorithmOption">
+                <TextBlock Text="{Binding Label}" />
+              </DataTemplate>
+            </ComboBox.ItemTemplate>
+          </ComboBox>
+
+          <TextBlock Classes="hint" Text="{Binding SelectedAlgorithm.Description}" />
+
+          <!-- Only the RSA schemes take a size: an ML-DSA parameter set fixes its own, so the picker is not
+               disabled for them, it is absent. -->
+          <StackPanel Spacing="8" IsVisible="{Binding IsRsaSelected}">
+            <TextBlock Classes="h2" Text="Modulus size" />
+            <ComboBox ItemsSource="{Binding RsaKeySizes}"
+                      SelectedItem="{Binding SelectedRsaKeySize}"
+                      HorizontalAlignment="Stretch" />
+            <TextBlock Classes="hint"
+                       Text="In bits. Larger is slower to generate and slower to verify, and an issuing key is generated once — 4096 is the size to keep unless something else demands otherwise." />
+          </StackPanel>
+
+        </StackPanel>
+      </controls:SettingsCardExpander>
+
+      <controls:SettingsCardExpander Header="Private key protection"
+                                     Description="Encrypt the private half with a password, or leave it in the clear."
+                                     IconData="{ei:IconGeometry LockKey}"
+                                     IsExpanded="True">
+        <StackPanel Spacing="12">
+
+          <editors:TextEditor Title="Password"
+                              Text="{Binding Password}"
+                              PasswordChar="&#x2022;"
+                              PlaceholderText="Leave empty to write the private key unencrypted" />
+
+          <editors:TextEditor Title="Confirm password"
+                              Text="{Binding ConfirmPassword}"
+                              PasswordChar="&#x2022;"
+                              PlaceholderText="Type it again"
+                              HasValidationError="{Binding HasPasswordMismatch, Mode=OneWay}"
+                              ValidationErrorMessage="{Binding PasswordMismatchMessage, Mode=OneWay}" />
+
+          <TextBlock Classes="hint"
+                     Text="Argon2id derives a key from the password and AES-256-GCM encrypts the key material with it. The password is never written anywhere, and a private key whose password is lost is lost with it." />
+
+        </StackPanel>
+      </controls:SettingsCardExpander>
+
+      <controls:SettingsCardExpander Header="Output files"
+                                     Description="Where the two halves are written. Existing files are overwritten."
+                                     IconData="{ei:IconGeometry FloppyDisk}"
+                                     IsExpanded="True">
+        <StackPanel Spacing="12">
+
+          <editors:TextEditor Title="Public key file"
+                              Text="{Binding PublicKeyPath}"
+                              PlaceholderText="Where the verifying half goes…"
+                              HasValidationError="{Binding PublicKeyPathHasError, Mode=OneWay}"
+                              ValidationErrorMessage="Required">
+            <editors:TextEditor.ActionContent>
+              <Button Content="Browse…"
+                      Command="{Binding BrowsePublicKeyPathCommand}"
+                      Padding="6,2"
+                      FontSize="12" />
+            </editors:TextEditor.ActionContent>
+          </editors:TextEditor>
+
+          <editors:TextEditor Title="Private key file"
+                              Text="{Binding PrivateKeyPath}"
+                              PlaceholderText="Where the signing half goes…"
+                              HasValidationError="{Binding PrivateKeyPathHasError, Mode=OneWay}"
+                              ValidationErrorMessage="Required">
+            <editors:TextEditor.ActionContent>
+              <Button Content="Browse…"
+                      Command="{Binding BrowsePrivateKeyPathCommand}"
+                      Padding="6,2"
+                      FontSize="12" />
+            </editors:TextEditor.ActionContent>
+          </editors:TextEditor>
+
+        </StackPanel>
+      </controls:SettingsCardExpander>
+
+      <Button Classes="accent"
+              Content="Generate the key pair"
+              Command="{Binding GenerateKeyPairCommand}"
+              HorizontalAlignment="Right" />
+
+      <!-- The result card outlives the info bar, which is the point of it: the fingerprint is what the
+           issuer has to carry over to the application that will verify, and a notification that has faded
+           cannot be copied from. -->
+      <Border Classes="card" IsVisible="{Binding HasResult}">
+        <StackPanel Spacing="8">
+
+          <TextBlock Classes="h2" Text="Last pair generated" />
+
+          <TextBlock Classes="field" Text="Fingerprint" />
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <SelectableTextBlock Classes="value mono"
+                                 Text="{Binding LastKeyId}"
+                                 VerticalAlignment="Center" />
+            <Button Command="{Binding CopyKeyIdCommand}"
+                    Padding="8,3"
+                    FontSize="12"
+                    ToolTip.Tip="Copy the fingerprint to the clipboard">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <PathIcon Data="{ei:IconGeometry Copy}" Width="12" Height="12" />
+                <TextBlock Text="Copy" />
+              </StackPanel>
+            </Button>
+          </StackPanel>
+
+          <TextBlock Classes="hint"
+                     Text="Both files carry this value, and so does every licence signed with the pair. It is an identifier, not a secret." />
+
+        </StackPanel>
+      </Border>
+
+    </StackPanel>
+  </ScrollViewer>
+
+</UserControl>

@@ -1,6 +1,6 @@
 # FEATURE-03A9 — Licensing core library
 
-**Status:** TODO
+**Status:** DONE
 **Type:** multi-phase (4 phases, one branch per phase: `feature/feature-03a9-phaseNN-<slug>`)
 
 ## Objective
@@ -178,7 +178,7 @@ when the **license's** productId contains `*`) → deviceId ordinal match. Resul
 
 ---
 
-## PHASE01 — License model & envelope format — **TODO**
+## PHASE01 — License model & envelope format — **DONE**
 
 Branch: `feature/feature-03a9-phase01-model-envelope`
 
@@ -197,7 +197,7 @@ Branch: `feature/feature-03a9-phase01-model-envelope`
 
 Acceptance: build + tests green, zero warnings; envelope JSON matches the validated preview shape.
 
-## PHASE02 — Key format & key service — **TODO**
+## PHASE02 — Key format & key service — **DONE**
 
 Branch: `feature/feature-03a9-phase02-keys`
 
@@ -219,7 +219,7 @@ Branch: `feature/feature-03a9-phase02-keys`
 
 Acceptance: build + tests green, zero warnings; key files match the validated preview shape.
 
-## PHASE03 — Generator, validator, store & device identity — **TODO**
+## PHASE03 — Generator, validator, store & device identity — **DONE**
 
 Branch: `feature/feature-03a9-phase03-services`
 
@@ -248,7 +248,7 @@ Branch: `feature/feature-03a9-phase03-services`
 Acceptance: build + tests green, zero warnings; validation returns correct `LicenseFailure` for
 every matrix row.
 
-## PHASE04 — DI registration, API polish & XML docs — **TODO**
+## PHASE04 — DI registration, API polish & XML docs — **DONE**
 
 Branch: `feature/feature-03a9-phase04-di-polish`
 

@@ -1,6 +1,6 @@
 # FEATURE-2FE8 — Repository & solution bootstrap
 
-**Status:** TODO
+**Status:** DONE
 **Branch:** `feature/feature-2fe8-bootstrap`
 **Type:** single-phase
 
