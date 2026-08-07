@@ -24,9 +24,11 @@ placeholder pages left — the app generates real key pairs, signs real licences
 verdicts about them. `FEATURE-57BC` (the v1.0.0 release) is what remains, and its `PHASE01` has landed:
 the library carries its **packaging metadata**, is **trim- and AOT-safe**, and its third-party licence
 audit is on file. `PHASE02` has landed too: the **five per-category usage guides and their index** are
-in `docs/guides/`, every snippet compiled against the real public surface rather than read. `PHASE03`
-(the README, release notes and `SECURITY.md`) is next. Read the plan file in `docs/plan/` before
-implementing any of it; the plan is the contract.
+in `docs/guides/`, every snippet compiled against the real public surface rather than read. So has
+`PHASE03`: the **packed `README.md`, `RELEASENOTES.md`, `SECURITY.md` and `<PackageReleaseNotes>`** are
+written, and with the README no longer empty **the package packs** — NU5040 is gone. `PHASE04` (the
+release runbook, the app's zip publish scripts and pack-verify) is the last one. Read the plan file in
+`docs/plan/` before implementing any of it; the plan is the contract.
 
 **The trim/AOT decision that was outstanding is answered — the fix shipped.** Serialization was
 reflection-based, which meant a consumer publishing with `PublishAot`, or with
@@ -477,17 +479,17 @@ had parked on this phase were surfaced at build time, confirmed, and the plan am
   all**, just a `runtime.json` and a zero-byte `lib/.../_._` placeholder, so nothing under it is
   redistributed. Compile-only (PolySharp), build-task (ILLink.Tasks) and test-only packages are out of
   scope. The full table is in `docs/done/FEATURE-57BC-PHASE01.md`.
-- **The package cannot be packed until `PHASE03`.** `dotnet pack` fails **NU5040 — the readme file is
-  empty**, because `README.md` is a zero-byte placeholder by design. The metadata was verified instead by
-  generating the nuspec directly (`dotnet msbuild -t:GenerateNuspec`). `PHASE04`'s pack-verify is the
-  first point a real pack can succeed, which is the order the phases already run in.
+- **The package could not be packed until `PHASE03`.** `dotnet pack` failed **NU5040 — the readme file is
+  empty**, because `README.md` was a zero-byte placeholder by design; the metadata was verified instead by
+  generating the nuspec directly. `PHASE03` wrote the README and the pack now succeeds. `PHASE04` still
+  owns pack-verify and its full assertion list.
 - **The desktop app carries an explicit `<Version>1.0.0</Version>`**, as its own csproj comment promised
   this phase would set. It matches the SDK default it had been inheriting, so nothing observable moved —
   but `PHASE04`'s publish scripts read it back with `dotnet msbuild -getProperty:Version`.
 
 Types in place: `EnvelopeJsonContext`, `PayloadJsonContext` (both internal), `LicensePayload.TryDeserialize`,
-and `LicenseEnvelope.ReadLicense()` — the phase's only public-surface addition. `<PackageReleaseNotes>` is
-deliberately still absent; `PHASE03` writes it beside `RELEASENOTES.md` so the two cannot disagree.
+and `LicenseEnvelope.ReadLicense()` — the phase's only public-surface addition. `<PackageReleaseNotes>` was
+deliberately left absent here; `PHASE03` wrote it beside `RELEASENOTES.md` so the two cannot disagree.
 
 ## Architecture & conventions
 
@@ -582,7 +584,9 @@ Directory.Packages.props             Central Package Management (all package ver
 .gitattributes                       LF everywhere; CRLF for .bat/.cmd
 global.json                          SDK 10.0.100 (latestFeature); test runner = Microsoft.Testing.Platform
 LICENSE.md                           MIT
-README.md, RELEASENOTES.md           Empty — written at release time (FEATURE-57BC-PHASE03)
+README.md                            Packed into the nupkg — the nuget.org landing page; prose-only doc pointers
+RELEASENOTES.md                      Newest-first release notes; PackageReleaseNotes mirrors its top section
+SECURITY.md                          Supported versions + GitHub private vulnerability reporting
 src/Enigma.Licensing/                The library
   License.cs                         The license data — the signed payload's model
   LicenseRequest.cs                  Generator input
@@ -884,12 +888,17 @@ MTP coverage needs `Microsoft.Testing.Extensions.CodeCoverage`. Measure before t
   from bootstrap, so a missing comment fails the zero-warning build. Per-category usage guides live
   under `docs/guides/` (`FEATURE-57BC-PHASE02`) — five guides plus an index, one per library
   category. **Their snippets are release-gated**: every fence is compiled against the real surface
-  before a release ships, never eyeballed, and the coverage table goes in the completion doc.
+  before a release ships, never eyeballed, and the coverage table goes in the completion doc — the
+  root `README.md`'s quick start included (`FEATURE-57BC-PHASE03`). **The root README is packed**, so
+  it renders on nuget.org where the repository tree does not exist: it may link only to `LICENSE.md`
+  and `RELEASENOTES.md`, and must point at `docs/guides/` in prose. A relative `docs/…` link there is
+  a dead link, not a style question. `docs/guides/README.md` is not packed, so its relative links to
+  the sibling guides are correct.
 - **Packaging metadata** (`PackageId`, `Version`, `Description`, …) landed at release time with
   `FEATURE-57BC-PHASE01`, per the `dotnet-release` skill — all twelve properties plus the packing
-  `ItemGroup`. `<PackageReleaseNotes>` is the one still to come (`PHASE03`, beside `RELEASENOTES.md`).
-  There are deliberately **no symbol properties** and no `GeneratePackageOnBuild`: a release ships one
-  `.nupkg`, packed explicitly. The library and the app version independently, in their own csproj —
+  `ItemGroup`. `<PackageReleaseNotes>` followed in `PHASE03`, written beside `RELEASENOTES.md` so the
+  two cannot disagree; keep them in step. There are deliberately **no symbol properties** and no
+  `GeneratePackageOnBuild`: a release ships one `.nupkg`, packed explicitly. The library and the app version independently, in their own csproj —
   there is no solution-wide `<Version>`; both read 1.0.0.
 - **Docs stay honest.** When a phase lands, update this file, `docs/roadmap.md` and the plan status
   in the same unit of work; do not leave "planned" markers on shipped code.
@@ -910,5 +919,5 @@ written. Commits are left to the maintainer.
 
 The sequence is a hard dependency chain: `FEATURE-2FE8` (repo skeleton — **done**) →
 `FEATURE-03A9` (licensing core library, 4 phases — **all done**) → `FEATURE-179C` (desktop app,
-4 phases — **all done**) → `FEATURE-57BC` (v1.0.0 release, 4 phases — `PHASE01` and `PHASE02`
-**done**, **PHASE03 next**).
+4 phases — **all done**) → `FEATURE-57BC` (v1.0.0 release, 4 phases — `PHASE01`, `PHASE02` and
+`PHASE03` **done**, **PHASE04 next**).

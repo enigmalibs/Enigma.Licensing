@@ -109,7 +109,7 @@ in the completion doc.
 
 Acceptance: all guides present, indexed, snippets verified with the table recorded.
 
-## PHASE03 — README, release notes & community files — **TODO**
+## PHASE03 — README, release notes & community files — **DONE**
 
 Branch: `feature/feature-57bc-phase03-readme-notes`
 
