@@ -8,11 +8,11 @@
 | - PHASE02    | Key format & key service                       | DONE        | (in FEATURE-03A9.md)      |
 | - PHASE03    | Generator, validator, store & device identity  | DONE        | (in FEATURE-03A9.md)      |
 | - PHASE04    | DI registration, API polish & XML docs         | DONE        | (in FEATURE-03A9.md)      |
-| FEATURE-179C | Desktop application                            | IN PROGRESS | docs/plan/FEATURE-179C.md |
+| FEATURE-179C | Desktop application                            | DONE        | docs/plan/FEATURE-179C.md |
 | - PHASE01    | App shell, hosting, theme & settings           | DONE        | (in FEATURE-179C.md)      |
 | - PHASE02    | Keys page                                      | DONE        | (in FEATURE-179C.md)      |
 | - PHASE03    | Generate page & license profiles               | DONE        | (in FEATURE-179C.md)      |
-| - PHASE04    | Validate page                                  | TODO        | (in FEATURE-179C.md)      |
+| - PHASE04    | Validate page                                  | DONE        | (in FEATURE-179C.md)      |
 | FEATURE-57BC | First release (v1.0.0)                         | TODO        | docs/plan/FEATURE-57BC.md |
 | - PHASE01    | Package metadata & third-party license audit   | TODO        | (in FEATURE-57BC.md)      |
 | - PHASE02    | Usage guides & index                           | TODO        | (in FEATURE-57BC.md)      |

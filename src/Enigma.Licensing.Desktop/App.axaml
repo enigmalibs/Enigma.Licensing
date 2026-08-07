@@ -98,6 +98,40 @@
       <Setter Property="Padding" Value="16" />
     </Style>
 
+    <!-- A verdict card: a .card whose fill says how it went. The severity arrives as a bound style class
+         (Classes.success="{Binding …}") rather than as a converter or a brush property on the ViewModel,
+         which is what keeps the control library's InfoBarSeverity — and every brush key — out of the pages.
+         The three pairs are the theme's own status surfaces, so a verdict follows a theme switch too. -->
+    <Style Selector="Border.verdict">
+      <Setter Property="Background" Value="{DynamicResource EnigmaInfoBackgroundBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource EnigmaInfoBorderBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="6" />
+      <Setter Property="Padding" Value="16" />
+    </Style>
+
+    <Style Selector="Border.verdict.success">
+      <Setter Property="Background" Value="{DynamicResource EnigmaSuccessBackgroundBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource EnigmaSuccessBorderBrush}" />
+    </Style>
+
+    <Style Selector="Border.verdict.warning">
+      <Setter Property="Background" Value="{DynamicResource EnigmaWarningBackgroundBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource EnigmaWarningBorderBrush}" />
+    </Style>
+
+    <Style Selector="Border.verdict.error">
+      <Setter Property="Background" Value="{DynamicResource EnigmaErrorBackgroundBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource EnigmaErrorBorderBrush}" />
+    </Style>
+
+    <!-- The verdict itself, one step up from h1: it is the answer to the only question the page asks. -->
+    <Style Selector="TextBlock.verdict">
+      <Setter Property="FontSize" Value="18" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+
   </Application.Styles>
 
 </Application>

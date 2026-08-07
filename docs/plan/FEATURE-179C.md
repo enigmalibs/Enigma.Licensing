@@ -1,6 +1,6 @@
 # FEATURE-179C — Desktop application
 
-**Status:** IN PROGRESS
+**Status:** DONE
 **Type:** multi-phase (4 phases, one branch per phase: `feature/feature-179c-phaseNN-<slug>`)
 **Depends on:** FEATURE-03A9 (the app consumes the library's public services)
 
@@ -127,7 +127,7 @@ Branch: `feature/feature-179c-phase03-generate-page`
 Acceptance: build/tests green; a license generated in the app validates in the app and via the
 library API.
 
-## PHASE04 — Validate page — **TODO**
+## PHASE04 — Validate page — **DONE**
 
 Branch: `feature/feature-179c-phase04-validate-page`
 

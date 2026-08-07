@@ -17,12 +17,12 @@ a reflection guard enforces that nothing but `Enigma.Licensing` types reach the 
 Everything in *Architecture & conventions* below now describes **code, not design**. Never write a
 doc, comment or summary that describes a planned type as if it already ships.
 
-`FEATURE-179C` (the Avalonia desktop app) is **in progress**: `PHASE01` shipped the **app shell,
-hosting, theme and settings**, `PHASE02` shipped the **keys page and the four application service
-seams**, and `PHASE03` shipped the **generate page and licence profiles** — the app now generates real key
-pairs and signs real licences with them. The Validate page remains the one deliberate placeholder, filled by
-`PHASE04`, and then `FEATURE-57BC` is the v1.0.0 release. Read the plan file in `docs/plan/` before
-implementing any of it; the plan is the contract.
+**`FEATURE-179C` (the Avalonia desktop app) is complete too**: `PHASE01` shipped the **app shell,
+hosting, theme and settings**, `PHASE02` the **keys page and the four application service seams**,
+`PHASE03` the **generate page and licence profiles**, and `PHASE04` the **validate page**. There are no
+placeholder pages left — the app generates real key pairs, signs real licences with them and reaches real
+verdicts about them. `FEATURE-57BC` (the v1.0.0 release) is what remains. Read the plan file in
+`docs/plan/` before implementing any of it; the plan is the contract.
 
 **One decision is due and deliberately outstanding:** the library is not trim/AOT-safe, because
 serialization is reflection-based. `FEATURE-03A9-PHASE04` was the point at which the model became
@@ -36,8 +36,8 @@ it.
 **Enigma.Licensing** is a .NET library that generates signed software licenses and imports, checks
 and validates them, signing with RSA or post-quantum ML-DSA keys. All cryptography comes from
 [Enigma.Core](https://www.nuget.org/packages/Enigma.Core) 1.1.0. A companion Avalonia desktop app
-(`src/Enigma.Licensing.Desktop`, `FEATURE-179C`) gives the issuer a UI for the same operations; its
-shell, its keys page and its generate page ship, and the validate page is filled by the last phase.
+(`src/Enigma.Licensing.Desktop`, `FEATURE-179C`) gives the issuer a UI for the same operations, and all
+four of its pages — keys, generate, validate and settings — ship.
 
 It is the successor to **Enigma.LicenseManager** (v1.2.0, which stays on NuGet for legacy
 consumers). It is a **clean break**: the license and key formats are new, and there is deliberately
@@ -386,6 +386,49 @@ Types in place: `LicenseProfile` + `LicenseProfile.CurrentFormatVersion`, `ILice
 `LicenseProfileStore` (registered `AddSingleton`), `LicenseClaimEntry`, and a real `GenerateLicenseViewModel`
 + `GenerateLicenseView`.
 
+### Validate page (FEATURE-179C-PHASE04)
+
+The last placeholder made real, and with it the app does end to end what the library does. The page picks a
+licence and a public key, takes an optional expected product and device (with the generate page's **This
+machine** button), calls `ILicenseValidator.ValidateAsync` on the two paths, and shows the answer in three
+stacked cards: the verdict, the document, and the licence.
+
+- **Verdicts go to the card; exceptions go to the info bar.** The library's own split, honoured in the UI:
+  nothing a *licence* can be makes the validator throw, so all seven failures are verdicts and belong somewhere
+  a user can read them twice, while a missing file, a key document that is not a key, and the private half where
+  the public one belongs are the application's own mistake and become error notifications that leave the previous
+  result alone. **A valid licence raises no notification at all** — the green card is the report.
+- **Three severities, and the split follows the library's boundary.** Authenticity is settled before anything the
+  licence *says* is read, so a failure is either "this document cannot be trusted" (`InvalidFormat`,
+  `UnknownAlgorithm`, `InvalidSignature` → red) or "authentic, and it does not apply here" (`NotYetValid`,
+  `Expired`, `ProductMismatch`, `DeviceMismatch` → amber). An expired licence and a forged one are different
+  conversations with a customer; painting both red would hide that.
+- **The severity reaches XAML as bound style classes**, not as a converter or a brush on the ViewModel:
+  `Classes.success="{Binding Verdict.IsSuccess}"` over four `Border.verdict*` styles in `App.axaml` built on the
+  theme's own status pairs. `LicenseVerdictSeverity` is the app's own enum precisely so the control library's
+  `InfoBarSeverity` stays out of a page — the same reason `INotificationService` exists. Do not swap it back.
+- **The page reads the licence file a second time itself**, for the document card's `algorithm` and `keyId`. The
+  library's path overload owns the verdict but hands back a verdict, not the document it read; those two fields
+  are the diagnosis on a signature failure, because a fingerprint that is *not* the key being checked against
+  says "wrong key" rather than "forged licence". Both failure modes of that read are swallowed — the verdict has
+  already accounted for each.
+- **Nothing here runs off the UI thread or behind the overlay**, unlike the other two pages: a public key is
+  never encrypted, so there is no Argon2id derivation, and verifying is microseconds either side of two small
+  file reads. `IsBusy` stops a second click, it does not cover a wait. `IBusyOverlayService` is not injected.
+- **`LicenseSummary` formats the instants as they are** — local time with the offset, `yyyy-MM-dd HH:mm zzz` —
+  so a licence issued "through the 31st" reads as midnight on the 1st, with a line on the card saying why.
+  Rounding it into a friendlier day would make this page and the generate page disagree about one licence. It
+  also gives the absent optionals words ("Not stated", "Any machine", "Immediately", "Never expires") and
+  flattens `License.Claims` into `LicenseClaimEntry` rows, because a compiled binding cannot template a
+  dictionary without naming a constructed generic type in XAML.
+- **A verdict is not cleared when an input is edited** — it is the last check, replaced by the next one, as the
+  other pages' result cards are. Reading the licence's real product off the card in order to type it into the
+  expected-product field is a real workflow, and a card that vanished mid-keystroke would break it.
+
+Types in place: `LicenseVerdict`, `LicenseVerdictSeverity`, `LicenseSummary`, and a real
+`ValidateLicenseViewModel` + `ValidateLicenseView`. No new service and no new registration — the page is built
+from seams that already existed.
+
 ## Architecture & conventions
 
 These hold across the whole library, and everything here **ships** — `FEATURE-03A9` is complete, so no
@@ -547,14 +590,17 @@ src/Enigma.Licensing.Desktop/        The Avalonia issuer app (net10.0)
   ViewModels/SettingsViewModel.cs    Apply-and-persist exactly once, plus the about section
   ViewModels/SignatureAlgorithmOption.cs   One picker entry: scheme, wire label, description, is-RSA
   ViewModels/LicenseClaimEntry.cs          One key/value claim row — immutable, so no two can share a name
+  ViewModels/LicenseVerdictSeverity.cs     Success / Warning / Error — the app's own, not InfoBarSeverity
+  ViewModels/LicenseVerdict.cs             The failure → headline/explanation/severity table + the class flags
+  ViewModels/LicenseSummary.cs             What a licence says, as the strings the read-only card shows
   ViewModels/GenerateKeysViewModel.cs      The keys page: pickers, password, paths, generate, fingerprint
   ViewModels/GenerateLicenseViewModel.cs   The generate page: the form, the lists, profiles, sign, result
-  ViewModels/ValidateLicenseViewModel.cs   placeholder — filled by FEATURE-179C-PHASE04
+  ViewModels/ValidateLicenseViewModel.cs   The validate page: two files, two expectations, verdict + cards
   Views/MainWindow.axaml(.cs)        NavigationView + the three service hosts, last in the root Panel
   Views/SettingsView.axaml(.cs)      Appearance SettingsCard + the About expander
   Views/GenerateKeysView.axaml(.cs)        Three SettingsCardExpanders, the accent button, the result card
   Views/GenerateLicenseView.axaml(.cs)     A profile SettingsCard + six expanders, the button, the result card
-  Views/ValidateLicenseView.axaml(.cs)     placeholder page
+  Views/ValidateLicenseView.axaml(.cs)     Two expanders, the button, then the verdict / document / licence cards
 tests/Enigma.Licensing.UnitTests/    xUnit v3 test suite
   SmokeTest.cs                       Toolchain smoke test
   LicenseTestData.cs                 Deterministic shared fixtures (no UtcNow — output is pinned)
@@ -571,7 +617,8 @@ tests/Enigma.Licensing.Desktop.UnitTests/   xUnit v3 test suite for the app (net
   Settings/                          The preference file and every way it can be useless
   Models/                            The profile file: its shape on disk, and every way one can be unreadable
   Services/                          NotificationService's timing, BusyOverlayService's card (needs friend access)
-  ViewModels/                        The rail, the appearance selector, and the two real pages + their round-trips
+  LicenseSamples.cs                  Licences and verdicts built by hand — no cryptography, nothing that moves
+  ViewModels/                        The rail, the appearance selector, and the three real pages + their round-trips
   Resources/                         AppInfo's shape (a version, no build metadata, an https project URL)
   TestDoubles/                       The app's seams and the library ones beneath them, plus RecordingLogger
 docs/roadmap.md                      Work-item registry
@@ -694,8 +741,8 @@ passed `TestContext.Current.CancellationToken`. `LicenseEnvelopeTests`, the `Key
 `private static CancellationToken Token => TestContext.Current.CancellationToken;`
 for this — copy that pattern rather than suppressing the rule.
 
-**Key generation is the expensive part of the suite** (most of the ~13 s run over 1049 cases — 836 in the
-library suite, 213 in the desktop one, which costs about two seconds): ten RSA
+**Key generation is the expensive part of the suite** (most of the ~14 s run over 1134 cases — 836 in the
+library suite, 298 in the desktop one, which costs about two seconds): ten RSA
 pairs, one at 4096 bits, plus Argon2id at 64 MiB per encrypted round-trip. Two collection fixtures exist
 so nothing generates a key it does not need to:
 
@@ -708,8 +755,11 @@ so nothing generates a key it does not need to:
 Generate outside a fixture only when generation is what the test is about. The **desktop** suite has no
 fixture and needs none: it generates ML-DSA-44 pairs, the cheapest the library makes, and only where a real
 key is unavoidable — a real `LicensingKeyPair` (the type's constructor is internal to the library, so a fake
-key service has to be handed one rather than invent it) or a real key *file* for the generate page to sign
-with.
+key service has to be handed one rather than invent it) or a real key *file* for the generate page to sign with
+and the validate page to check against. The one exception is `ValidateLicenseRoundTripTests`'s headline theory,
+which generates **one RSA-2048 pair** because "both algorithm families reach a verdict" is what that test is
+about; `LicenseSamples` covers everything else that needs a licence or a verdict without any cryptography at
+all, since `LicenseValidationResult` has a public constructor.
 
 ### Two ways this build goes red without anyone touching the repo
 
@@ -784,4 +834,4 @@ written. Commits are left to the maintainer.
 
 The sequence is a hard dependency chain: `FEATURE-2FE8` (repo skeleton — **done**) →
 `FEATURE-03A9` (licensing core library, 4 phases — **all done**) → `FEATURE-179C` (desktop app,
-4 phases — **PHASE01–03 done, PHASE04 next**) → `FEATURE-57BC` (v1.0.0 release, 4 phases).
+4 phases — **all done**) → `FEATURE-57BC` (v1.0.0 release, 4 phases — **PHASE01 next**).
