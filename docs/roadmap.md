@@ -6,7 +6,7 @@
 | FEATURE-03A9 | Licensing core library                         | IN PROGRESS | docs/plan/FEATURE-03A9.md |
 | - PHASE01    | License model & envelope format                | DONE        | (in FEATURE-03A9.md)      |
 | - PHASE02    | Key format & key service                       | DONE        | (in FEATURE-03A9.md)      |
-| - PHASE03    | Generator, validator, store & device identity  | TODO        | (in FEATURE-03A9.md)      |
+| - PHASE03    | Generator, validator, store & device identity  | DONE        | (in FEATURE-03A9.md)      |
 | - PHASE04    | DI registration, API polish & XML docs         | TODO        | (in FEATURE-03A9.md)      |
 | FEATURE-179C | Desktop application                            | TODO        | docs/plan/FEATURE-179C.md |
 | - PHASE01    | App shell, hosting, theme & settings           | TODO        | (in FEATURE-179C.md)      |

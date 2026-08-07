@@ -30,9 +30,6 @@ namespace Enigma.Licensing.Keys;
 /// </remarks>
 public sealed class KeyService : IKeyService
 {
-    // The default FileStream buffer; large enough that a key file is a single read or write.
-    private const int FileBufferSize = 4096;
-
     private readonly IPublicKeyService _rsaService = new PublicKeyServiceFactory().CreatePublicKeyService();
     private readonly IMLDsaServiceFactory _mlDsaServiceFactory = new MLDsaServiceFactory();
 
@@ -210,8 +207,8 @@ public sealed class KeyService : IKeyService
             throw new ArgumentNullException(nameof(pair));
         }
 
-        RequireUsablePath(publicKeyPath, nameof(publicKeyPath));
-        RequireUsablePath(privateKeyPath, nameof(privateKeyPath));
+        DocumentFile.RequirePath(publicKeyPath, nameof(publicKeyPath));
+        DocumentFile.RequirePath(privateKeyPath, nameof(privateKeyPath));
 
         if (pair.PublicKey.Kind != KeyKind.Public || pair.PrivateKey.Kind != KeyKind.Private)
         {
@@ -242,10 +239,9 @@ public sealed class KeyService : IKeyService
         char[]? password = null,
         CancellationToken cancellationToken = default)
     {
-        RequireUsablePath(path, nameof(path));
+        DocumentFile.RequirePath(path, nameof(path));
 
-        using FileStream input = new(
-            path, FileMode.Open, FileAccess.Read, FileShare.Read, FileBufferSize, useAsync: true);
+        using FileStream input = DocumentFile.OpenRead(path);
 
         return await LoadKeyAsync(input, password, cancellationToken).ConfigureAwait(false);
     }
@@ -315,17 +311,8 @@ public sealed class KeyService : IKeyService
         char[]? password,
         CancellationToken cancellationToken)
     {
-        // Creating the parent directory is the point of the path overloads: the predecessor made every
-        // caller do it, and forgetting produced a DirectoryNotFoundException at the worst moment.
-        string? directory = Path.GetDirectoryName(path);
-
-        if (directory is { Length: > 0 })
-        {
-            Directory.CreateDirectory(directory);
-        }
-
-        using FileStream output = new(
-            path, FileMode.Create, FileAccess.Write, FileShare.None, FileBufferSize, useAsync: true);
+        // DocumentFile.Create is what makes the missing parent directory a non-issue.
+        using FileStream output = DocumentFile.Create(path);
 
         await SaveKeyAsync(key, output, password, cancellationToken).ConfigureAwait(false);
     }
@@ -337,19 +324,6 @@ public sealed class KeyService : IKeyService
             throw new ArgumentException(
                 "The password must not be empty. Pass null to leave the key unencrypted.",
                 nameof(password));
-        }
-    }
-
-    private static void RequireUsablePath(string path, string parameterName)
-    {
-        if (path is null)
-        {
-            throw new ArgumentNullException(parameterName);
-        }
-
-        if (path.Trim().Length == 0)
-        {
-            throw new ArgumentException("The path must not be empty.", parameterName);
         }
     }
 }

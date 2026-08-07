@@ -6,15 +6,17 @@ Guidance for Claude Code (and other AI agents) working in this repository.
 
 `FEATURE-2FE8` stood up the repo, the root configuration, a multi-targeted library and an MTP-native
 xUnit v3 test project. `FEATURE-03A9-PHASE01` deleted the bootstrap placeholder and shipped the
-**license model and the `enigma-license/1` envelope format**; `FEATURE-03A9-PHASE02` shipped the
-**`enigma-key/1` key format and `IKeyService`**, and with it the first Enigma.Core reference — see
-*Shipped* below.
+**license model and the `enigma-license/1` envelope format**; `PHASE02` shipped the **`enigma-key/1`
+key format and `IKeyService`**, and with it the first Enigma.Core reference; `PHASE03` shipped the
+**generator, validator, store and device identity** — the library now signs and checks licenses end to
+end, with all six algorithms round-tripping through save → load → validate. See *Shipped* below.
 
-Nothing signs or verifies yet, and there is **no DI registration**: `PHASE03` adds the generator,
-validator and store, `PHASE04` the `AddEnigmaLicensing()` extension. Until then everything under
-*Planned architecture* is the agreed design recorded in `docs/plan/`, not code that exists. Read the
-plan file before implementing any of it; the plan is the contract. Never write a doc, comment or
-summary that describes a planned type as if it already ships.
+One thing is left in `FEATURE-03A9`: **there is still no DI registration.** `PHASE04` adds
+`AddEnigmaLicensing()`, the public-surface guard test and the final XML-doc pass. Those are the only
+parts of *Architecture & conventions* below that describe design rather than code — they are marked as
+such, and the agreed design is recorded in `docs/plan/`. Read the plan file before implementing any of
+it; the plan is the contract. Never write a doc, comment or summary that describes a planned type as if
+it already ships.
 
 ## What this is
 
@@ -127,14 +129,77 @@ Types in place: `IKeyService` / `KeyService` (generate; save/load by stream; `Sa
 `CoreAlgorithms` (the only place naming an Enigma.Core algorithm type). `LicensingKey` keeps its
 material internal, so the PEM-versus-raw difference never reaches the public API.
 
-## Planned architecture
+### Generator, validator, store & device identity (FEATURE-03A9-PHASE03)
+
+Three services in `Enigma.Licensing`, all sealed classes behind interfaces with a public parameterless
+constructor: `ILicenseGenerator`/`LicenseGenerator` (sign a `LicenseRequest` into a `LicenseEnvelope`),
+`ILicenseValidator`/`LicenseValidator` (stateless verdict over an envelope) and
+`ILicenseStore`/`LicenseStore` (thread-safe registry). Plus `LicenseFailure`,
+`LicenseValidationResult` and the static `DeviceIdentifier`.
+
+- **The verifier is chosen from the *envelope's* `algorithm`, not the key's.** This is the mechanism
+  behind the format's algorithm-substitution claim, and the reason `LicenseSignatures.Verify` takes the
+  algorithm as an argument separate from the key: rewriting the field means the signature is checked
+  under the scheme the file claims, and it fails. An RSA key can sign under any of the three digests,
+  so nothing but this check would stop a downgrade. A key from the other family is refused structurally
+  before Core is called at all — PEM text is not a FIPS 204 encoding.
+- **Signature verification fails closed.** `LicenseSignatures.Verify` catches broadly (everything but
+  `OutOfMemoryException`, `StackOverflowException` and `OperationCanceledException`) and returns
+  `false`. Core wraps BouncyCastle, whose "not a key / not a signature" failures surface as several
+  unrelated types that are not part of Core's documented contract; enumerating them would break on a
+  Core or BouncyCastle bump for no gain. The worst case of the broad catch is a good license reported
+  invalid, never the reverse.
+- **The license is untrusted input; the public key is not.** Nothing a *license* can be makes the
+  validator throw — malformed JSON, bad base64, unknown format, unknown algorithm, a broken signature
+  and an expired window are all verdicts. The *public key* is the opposite: it ships inside the
+  application, so a malformed key file, or one holding the private half, throws. Keep that split — it
+  is what stops "never throws" from swallowing a deployment fault. I/O still propagates, so a **missing
+  license file throws** rather than returning `InvalidFormat`.
+- **Validation stops at the first failure**, in the order documented under *Validation order* below.
+  Authenticity is settled before anything the license *says* is read, so an expired license and a
+  forged one are never confused. `LicenseValidationResult.License` is populated whenever the payload was
+  readable — including on failure, so an application can say *what* expired — which also means it is
+  unverified on a failed result: safe to display, unsafe to act on.
+- **The generator defaults what the request omits**: `Id` becomes a fresh ULID and `CreatedAt`
+  `DateTimeOffset.UtcNow`, stamped per call, so signing one request twice issues two licenses. It
+  rejects a blank `ProductId` or `Id` and a window that ends before it starts, and stamps the pair's
+  `keyId` into every envelope. The path overload signs *before* touching the output file, so a rejected
+  request leaves no truncated license behind.
+- **The store re-validates on every query and caches nothing** — not the verdict, not the parsed
+  license. That is the only correct behaviour: a license expires while the process runs and the next
+  query says so. `Add` asserts nothing beyond reading the identifier out of the payload, so installing
+  a license and judging one stay separate concerns. A lock guards the registry; queries snapshot under
+  it and verify outside it, so slow cryptography never blocks a write. `FindValidLicense` returns the
+  first match in **insertion order**, and `Add` replaces an entry with the same id in place.
+- **Product matching escapes first, then substitutes.** `Regex.Escape` the license's identifier, swap
+  `\*` for `.*`, anchor with `\A`/`\z` — not `^`/`$`, which in .NET also match before a trailing
+  newline. The wildcard is honoured only on the **license's** side; the application's identifier is
+  always a literal. Escaping first is what fixes the predecessor's bug where a dot in a version number
+  matched any character.
+- **`DeviceIdentifier.Generate()` is best-effort and documented as such**: machine name + OS version,
+  hashed, so the machine name is not readable in a license file. An OS upgrade changes it; identical
+  VMs collide; the MAC address is deliberately excluded because docks and VPN adapters come and go. Any
+  other scheme plugs in freely — the library never interprets a device identifier, it only compares it
+  ordinally.
+
+Types in place: `ILicenseGenerator`/`LicenseGenerator`, `ILicenseValidator`/`LicenseValidator`,
+`ILicenseStore`/`LicenseStore`, `LicenseFailure`, `LicenseValidationResult`, `DeviceIdentifier`, and
+the internal seams `LicenseSignatures` (sign/verify dispatch), `ProductIdMatch` (the wildcard rule) and
+`DocumentFile` (the path guard plus open-for-read / create-with-parent-directories, which `KeyService`
+was folded onto in the same change). `CoreAlgorithms` gained `ToRsaSignatureAlgorithm` and remains the
+only place naming an Enigma.Core algorithm type.
+
+## Architecture & conventions
+
+These hold across the whole library. Everything here **ships** except where a heading says otherwise —
+`FEATURE-03A9-PHASE04` is the only outstanding piece, and it is called out where it applies.
 
 ### Algorithms
 
 `LicenseSignatureAlgorithm` covers the full Enigma.Core signing surface, with one internal
 `AlgorithmIds` class as the **single source of truth** for the enum ↔ string mapping (mirroring
-Enigma.Core's `SignatureAlgorithms.ToJcaName`). The enum and the mapping ship (PHASE01), and
-key generation for all six ships (PHASE02); only *signing and verifying* with them is still planned:
+Enigma.Core's `SignatureAlgorithms.ToJcaName`). All six ship end to end as of PHASE03 — enum, wire
+strings, key generation, signing and verifying — and every one is exercised by the round-trip theory:
 
 | Enum member | Identifier | Backed by |
 |---|---|---|
@@ -149,30 +214,38 @@ Matching is ordinal and case-sensitive both ways, and both directions use the un
 pattern rather than throwing — `AlgorithmIds` maps, it does not decide what an unmappable value
 means. Nothing outside that class may spell one of these strings.
 
-### Services & DI (FEATURE-03A9-PHASE03 / PHASE04)
+### Services (all four ship) & DI (**PHASE04 — planned**)
 
-Four interfaces in `Enigma.Licensing` / `Enigma.Licensing.Keys`, of which `IKeyService` (generate,
-save, load keys) **ships**. Still planned: `ILicenseGenerator` (sign a `LicenseRequest` into a
-`LicenseEnvelope`), `ILicenseValidator` (stateless verdict over an envelope), `ILicenseStore`
-(thread-safe registry that re-validates at query time). Registration is a single
-`AddEnigmaLicensing()` extension in the `Microsoft.Extensions.DependencyInjection` namespace
-(predecessor convention), doing `TryAddSingleton` for all four. The services are stateless sealed
-classes with a public parameterless constructor that news up the Enigma.Core services they need —
-Core ships no DI extension of its own, so there is nothing to inject.
+Four interfaces, all shipped: `IKeyService` in `Enigma.Licensing.Keys` (generate, save, load keys) and
+`ILicenseGenerator`, `ILicenseValidator`, `ILicenseStore` in `Enigma.Licensing`. They are sealed
+classes with a public parameterless constructor that news up the Enigma.Core services they need — Core
+ships no DI extension of its own, so there is nothing to inject. All are stateless and safe to share
+except `LicenseStore`, which is a registry and is guarded by a lock; it alone takes a second
+constructor, `LicenseStore(ILicenseValidator)`, because it is the one service that genuinely composes
+with another rather than wrapping Core directly.
 
-The model (`License`, `LicenseRequest`, `LicenseEnvelope` — all shipped — plus the planned
-`LicenseValidationResult`) is **immutable**: sealed `init`-only records, varied with `with`. Dates are
-`DateTimeOffset`, serialized ISO-8601 with an explicit offset and validated against
-`DateTimeOffset.UtcNow`; there is **no clock abstraction** (tests craft validity windows instead).
-Serialization is System.Text.Json with camelCase names — never Newtonsoft.
+**Still planned:** registration, as a single `AddEnigmaLicensing()` extension in the
+`Microsoft.Extensions.DependencyInjection` namespace (predecessor convention), doing `TryAddSingleton`
+for all four.
+
+The model — `License`, `LicenseRequest`, `LicenseEnvelope`, `LicenseValidationResult` — is
+**immutable**: sealed `init`-only records, varied with `with`. Dates are `DateTimeOffset`, serialized
+ISO-8601 with an explicit offset and validated against `DateTimeOffset.UtcNow`; there is **no clock
+abstraction** (tests craft real validity windows instead). Serialization is System.Text.Json with
+camelCase names — never Newtonsoft.
 
 ### Validation order
 
-Documented in XML docs and fixed by the plan: envelope well-formed → format version known →
-algorithm known → signature verifies over the payload bytes → payload deserializes →
-`ValidFrom`/`ValidUntil` window vs `UtcNow` → productId match (exact, or regex with `Regex.Escape`
-then `\*` → `.*`, anchored, when the **license's** productId contains `*`) → deviceId ordinal match.
-The result carries the parsed `License` whenever the payload was parseable, even on failure.
+Fixed, documented in `ILicenseValidator`'s XML docs, and asserted row by row by `LicenseValidatorTests`:
+envelope well-formed → format version known → algorithm known → signature verifies over the payload
+bytes → payload deserializes → `ValidFrom`/`ValidUntil` window vs `UtcNow` → productId match (exact,
+or the anchored wildcard when the **license's** productId contains `*`) → deviceId ordinal match.
+Validation stops at the first failure, so an expired license reports `Expired` even if it is also for
+the wrong product. The result carries the parsed `License` whenever the payload was parseable, even on
+failure — unverified, so it is safe to display and unsafe to act on.
+
+A `null` `productId` or `deviceId` argument **skips** that check. For `deviceId` that means passing: an
+application that locks licenses to devices must supply it on every call.
 
 ### Error contract (Enigma.Core discipline)
 
@@ -181,14 +254,17 @@ The result carries the parsed `License` whenever the payload was parseable, even
 - `System.Security.Cryptography.CryptographicException` for crypto-input failures — wrong or missing
   password, malformed or tampered key material, out-of-range KDF parameters in a key file.
 - **Validation never throws** for an invalid or malformed license: `ILicenseValidator` returns a
-  `LicenseValidationResult` with a `LicenseFailure` reason. It catches JSON/format/crypto/argument
-  failures from parsing and maps them. (`LicenseEnvelope.LoadAsync` *does* throw on malformed
-  input — the validator is the layer that never throws.)
-- I/O exceptions propagate untouched.
+  `LicenseValidationResult` with a `LicenseFailure` reason. It catches the parse failures and maps
+  them, and signature verification fails closed rather than propagating. (`LicenseEnvelope.LoadAsync`
+  *does* throw on malformed input — the validator is the layer that never throws, and it runs that
+  parse inside its own `try`/`catch`.) The **key** a validator is handed is not covered by this: a bad
+  key file throws, because it is the application's own file rather than untrusted input.
+- I/O exceptions propagate untouched — including a missing license file.
 
-**Load-bearing invariant — only `Enigma.Licensing` types on the public surface.** Enigma.Core is an
-implementation detail: no `Enigma.Core.*` and no `Org.BouncyCastle.*` type may appear on any
-exported type or member. `FEATURE-03A9-PHASE04` adds a reflection guard test modelled on
+**Load-bearing invariant — only `Enigma.Licensing` types on the public surface.** Enigma.Core, Ulid and
+DeviceId are all implementation details: no `Enigma.Core.*`, `Org.BouncyCastle.*`, `Ulid` or
+`DeviceId.*` type may appear on any exported type or member. (That is why `DeviceIdentifier.Generate()`
+returns a plain `string`.) `FEATURE-03A9-PHASE04` adds a reflection guard test modelled on
 Enigma.Core's `BouncyCastleIsolationTests`. Keep it green.
 
 ## Project layout
@@ -206,11 +282,21 @@ LICENSE.md                           MIT
 README.md, RELEASENOTES.md           Empty — written at release time (FEATURE-57BC-PHASE03)
 src/Enigma.Licensing/                The library
   License.cs                         The license data — the signed payload's model
-  LicenseRequest.cs                  Generator input (PHASE03 consumes it)
+  LicenseRequest.cs                  Generator input
   LicenseEnvelope.cs                 The enigma-license/1 document + SaveAsync/LoadAsync
   LicenseSignatureAlgorithm.cs       The six signing schemes
+  ILicenseGenerator.cs               Sign a request into an envelope — interface + error contract
+  LicenseGenerator.cs                Its implementation: defaulting, request validation, signing
+  ILicenseValidator.cs               The verdict interface + the documented check order
+  LicenseValidator.cs                Its implementation
+  ILicenseStore.cs                   The registry that re-validates at query time
+  LicenseStore.cs                    Its implementation: lock over a list, snapshot-then-verify
+  LicenseFailure.cs                  The seven failure reasons, in check order
+  LicenseValidationResult.cs         The verdict record (+ internal Valid/Invalid factories)
+  DeviceIdentifier.cs                Generate() — machine name + OS version, hashed
   Internal/AlgorithmIds.cs           Single source of truth for enum ↔ wire strings
   Internal/CoreAlgorithms.cs         The enum → Enigma.Core primitive map (the only place naming one)
+  Internal/DocumentFile.cs           Path guard + open-for-read / create-with-parent-directories
   Internal/KeyEnvelope.cs            The enigma-key/1 document (internal — see Shipped)
   Internal/KeyEncryption.cs          Its `encryption` object: kdf, costs, salt, cipher, nonce, tag size
   Internal/KeyFingerprint.cs         The keyId construction (SHA-256 over algorithmId ‖ public material)
@@ -220,6 +306,8 @@ src/Enigma.Licensing/                The library
   Internal/KeyMaterialCipher.cs      Argon2id → AES-256-GCM over the private material
   Internal/LicenseJson.cs            The two JsonSerializerOptions instances (both formats share them)
   Internal/LicensePayload.cs         License ↔ signed UTF-8 JSON bytes
+  Internal/LicenseSignatures.cs      Sign/verify dispatch across the two Core families; fails closed
+  Internal/ProductIdMatch.cs         The wildcard rule: escape, then substitute, anchored \A…\z
   Properties/AssemblyInfo.cs         InternalsVisibleTo for the test assembly
   Keys/IKeyService.cs                Generate / save / load keys — the interface and its error contract
   Keys/KeyService.cs                 Its implementation, on Enigma.Core
@@ -231,6 +319,8 @@ tests/Enigma.Licensing.UnitTests/    xUnit v3 test suite
   SmokeTest.cs                       Toolchain smoke test
   LicenseTestData.cs                 Deterministic shared fixtures (no UtcNow — output is pinned)
   Api/                               Tests over the public surface
+    SignedLicenseFixture.cs          One generate-once key pair per algorithm + the theory data
+    SignedLicenseTestData.cs         Requests with real windows; save/load/edit an envelope
   Internal/                          Tests over the internal seams (needs InternalsVisibleTo)
   Keys/                              Key generation, storage & encryption + their shared fixtures
   Model/                             Tests over the records
@@ -253,9 +343,10 @@ There is **no CI workflow**, deliberately — consistent with every sibling Enig
   surface is exercised through the `net8.0` paths. The planned desktop app and its test project are
   **net10.0** only.
 - **Currently pinned** in `Directory.Packages.props` — only what the code actually references:
-  `Enigma.Core` 1.1.0 (all three TFMs), `PolySharp` 1.16.0, `System.Buffers` 4.6.1 and
-  `System.Text.Json` 10.0.10 (those three **netstandard2.0 only** in the library), `xunit.v3` 3.2.2,
-  `coverlet.collector` 10.0.1. Referencing `System.Buffers` or `System.Text.Json` on net8.0+ raises
+  `Enigma.Core` 1.1.0, `Ulid` 1.4.1 and `DeviceId` 6.11.0 (all three TFMs), `PolySharp` 1.16.0,
+  `System.Buffers` 4.6.1 and `System.Text.Json` 10.0.10 (those three **netstandard2.0 only** in the
+  library), `xunit.v3` 3.2.2, `coverlet.collector` 10.0.1. Referencing `System.Buffers` or
+  `System.Text.Json` on net8.0+ raises
   NU1510 and fails the zero-warning build — both are framework-provided there, and the library's JSON
   usage stays inside what System.Text.Json 8.0 supports. PolySharp (compile-only, `PrivateAssets=all`)
   is what makes `init`/`required` members and the nullable-analysis attributes work on netstandard2.0.
@@ -263,8 +354,16 @@ There is **no CI workflow**, deliberately — consistent with every sibling Enig
   netstandard2.0 dependency group asks for `System.Buffers` 4.6.1 — the version already pinned — so the
   graph closes with no duplicate. It brings `BouncyCastle.Cryptography` 2.7.0 transitively; neither may
   reach this library's public surface.
-- **Runtime dependencies so far: Enigma.Core everywhere, System.Text.Json on netstandard2.0 only.**
-  Still to land (all MIT): Ulid (license ids) and DeviceId (device identity) (`PHASE03`),
+- **Ulid and DeviceId are referenced unconditionally too** (both MIT, both multi-target the same three
+  TFMs). Ulid mints the identifier the generator stamps when a request carries none — sortable by issue
+  time, unlike a GUID; on netstandard2.0 it asks for `System.Memory` and
+  `System.Runtime.CompilerServices.Unsafe`, which the graph already closes over. DeviceId backs
+  `DeviceIdentifier.Generate()`; only the **base** package is referenced (the `DeviceId.Windows` /
+  `.Linux` / `.Mac` packages exist for hardware-bound components this library deliberately does not
+  use), and on netstandard2.0 alone it pulls `Microsoft.DotNet.PlatformAbstractions` 3.1.6 — a legacy
+  package worth a look at FEATURE-57BC-PHASE01's third-party licence audit.
+- **Runtime dependencies so far: Enigma.Core, Ulid and DeviceId everywhere; System.Text.Json on
+  netstandard2.0 only.** Still to land:
   Microsoft.Extensions.DependencyInjection.Abstractions at a low floor (`PHASE04`).
   Planned app dependencies: Avalonia 12.1.1 (the coupled Avalonia set is bumped only as a unit),
   Enigma.Avalonia.Desktop 1.0.0, Enigma.Icons / Enigma.Icons.Phosphor / Enigma.Icons.Avalonia 1.0.0,
@@ -298,14 +397,20 @@ only implicit using in the test project. Test fixtures are copied by a `**/*.jso
 
 The xunit.v3 analyzers run at warning level, so under `TreatWarningsAsErrors` **they are build
 errors**. The one that bites constantly is `xUnit1051`: any call taking a `CancellationToken` must be
-passed `TestContext.Current.CancellationToken`. `LicenseEnvelopeTests` and the `Keys/` suites each keep
-a `private static CancellationToken Token => TestContext.Current.CancellationToken;` for this — copy
-that pattern rather than suppressing the rule.
+passed `TestContext.Current.CancellationToken`. `LicenseEnvelopeTests` and the `Keys/` and `Api/`
+suites each keep a `private static CancellationToken Token => TestContext.Current.CancellationToken;`
+for this — copy that pattern rather than suppressing the rule.
 
-**Key generation is the expensive part of the suite** (~10 s of the run): seven RSA pairs, one at 4096
-bits, plus Argon2id at 64 MiB per encrypted round-trip. `GeneratedKeyFixture` is a collection fixture
-holding one RSA-2048 and one ML-DSA-65 pair — use it for anything that just needs *a* key, and
-generate only when generation is what the test is about.
+**Key generation is the expensive part of the suite** (most of the ~11 s run): ten RSA pairs, one at
+4096 bits, plus Argon2id at 64 MiB per encrypted round-trip. Two collection fixtures exist so nothing
+generates a key it does not need to:
+
+- `GeneratedKeyFixture` (`Keys/`) — one RSA-2048 and one ML-DSA-65 pair, for the key-format suites.
+- `SignedLicenseFixture` (`Api/`) — one pair per `LicenseSignatureAlgorithm` member, RSA at 2048, for
+  the signing suites. It also exposes `AllAlgorithms` as theory data; `Rsa` and `MLDsa` are the
+  defaults for a test that just needs *a* key of each shape.
+
+Generate outside a fixture only when generation is what the test is about.
 
 ### Two ways this build goes red without anyone touching the repo
 
@@ -376,5 +481,5 @@ plan's acceptance criteria are met, the roadmap/plan statuses are updated, and t
 written. Commits are left to the maintainer.
 
 The sequence is a hard dependency chain: `FEATURE-2FE8` (repo skeleton — **done**) →
-`FEATURE-03A9` (licensing core library, 4 phases — **PHASE01–02 done**) → `FEATURE-179C` (desktop app,
+`FEATURE-03A9` (licensing core library, 4 phases — **PHASE01–03 done**) → `FEATURE-179C` (desktop app,
 4 phases) → `FEATURE-57BC` (v1.0.0 release, 4 phases).

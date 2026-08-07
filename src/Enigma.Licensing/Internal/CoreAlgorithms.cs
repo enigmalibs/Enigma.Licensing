@@ -1,4 +1,5 @@
 using System;
+using Enigma.Core;
 using Enigma.Core.Asymmetric.Pqc;
 
 namespace Enigma.Licensing.Internal;
@@ -32,6 +33,30 @@ internal static class CoreAlgorithms
         LicenseSignatureAlgorithm.RsaSha256 or
         LicenseSignatureAlgorithm.RsaSha384 or
         LicenseSignatureAlgorithm.RsaSha512;
+
+    /// <summary>
+    /// Returns the Enigma.Core RSASSA-PKCS1-v1_5 scheme behind one of the RSA members.
+    /// </summary>
+    /// <param name="algorithm">One of the RSA members.</param>
+    /// <returns>The matching Enigma.Core signature algorithm — the digest choice, paired with RSA.</returns>
+    /// <remarks>
+    /// The digest is what distinguishes the three RSA members from one another, and it is chosen from
+    /// the <i>envelope's</i> algorithm identifier rather than the key's. That is deliberate: an RSA key
+    /// can sign under any of the three digests, so rewriting the identifier in a stored license makes
+    /// the signature be verified under a scheme it was not produced with, and it fails.
+    /// </remarks>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="algorithm"/> is not an RSA member. Callers gate on <see cref="IsRsa"/> first.
+    /// </exception>
+    internal static RsaSignatureAlgorithm ToRsaSignatureAlgorithm(LicenseSignatureAlgorithm algorithm) =>
+        algorithm switch
+        {
+            LicenseSignatureAlgorithm.RsaSha256 => RsaSignatureAlgorithm.Sha256WithRsa,
+            LicenseSignatureAlgorithm.RsaSha384 => RsaSignatureAlgorithm.Sha384WithRsa,
+            LicenseSignatureAlgorithm.RsaSha512 => RsaSignatureAlgorithm.Sha512WithRsa,
+            _ => throw new ArgumentOutOfRangeException(nameof(algorithm), algorithm,
+                "Only the RSA members map to an RSASSA-PKCS1-v1_5 scheme."),
+        };
 
     /// <summary>
     /// Returns the FIPS 204 parameter set behind one of the ML-DSA members.

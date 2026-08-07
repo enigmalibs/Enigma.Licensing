@@ -23,8 +23,15 @@
        multi-targets the same three TFMs, so the reference is unconditional. It is an implementation
        detail: no Enigma.Core.* or Org.BouncyCastle.* type may reach this library's public surface
        (guarded by a reflection test in FEATURE-03A9-PHASE04). -->
+  <!-- Ulid: the identifier the generator issues when a LicenseRequest carries none. DeviceId: the
+       machine-name + OS-version components behind DeviceIdentifier.Generate(). Both multi-target all
+       three of our TFMs, so both references are unconditional; both are MIT. Like Enigma.Core they are
+       implementation details — no Ulid or DeviceId type reaches this library's public surface, which
+       is why DeviceIdentifier.Generate() returns a plain string. -->
   <ItemGroup>
     <PackageReference Include="Enigma.Core" />
+    <PackageReference Include="Ulid" />
+    <PackageReference Include="DeviceId" />
   </ItemGroup>
   <!-- System.Buffers (Span/Memory/ArrayPool support) and System.Text.Json are framework-provided on
        net8.0+; they are only needed as explicit packages on netstandard2.0. Referencing either on

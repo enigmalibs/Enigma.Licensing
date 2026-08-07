@@ -3,11 +3,10 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
   <!-- Only what the code actually references is pinned here. Every later dev adds its own pins when
-       the reference lands, not before: Ulid and DeviceId (FEATURE-03A9-PHASE03),
-       Microsoft.Extensions.DependencyInjection.Abstractions (PHASE04), and the desktop set —
-       Avalonia 12.1.1 (version-coupled, bump as a unit), Enigma.Avalonia.Desktop 1.0.0,
-       Enigma.Icons/.Phosphor/.Avalonia 1.0.0, CommunityToolkit.Mvvm 8.4.2,
-       Microsoft.Extensions.Hosting 10.0.10 (FEATURE-179C). -->
+       the reference lands, not before: Microsoft.Extensions.DependencyInjection.Abstractions
+       (FEATURE-03A9-PHASE04), and the desktop set — Avalonia 12.1.1 (version-coupled, bump as a
+       unit), Enigma.Avalonia.Desktop 1.0.0, Enigma.Icons/.Phosphor/.Avalonia 1.0.0,
+       CommunityToolkit.Mvvm 8.4.2, Microsoft.Extensions.Hosting 10.0.10 (FEATURE-179C). -->
   <!-- Library. Enigma.Core is the cryptographic engine behind every service here and is referenced on
        all three TFMs — it multi-targets exactly the same set. It brings BouncyCastle.Cryptography
        2.7.0 transitively; neither type may appear on this library's public surface. -->
@@ -17,11 +16,21 @@
        there would raise NU1510 and fail the zero-warnings build. 10.0.10 is the version whose own
        netstandard2.0 dependency set already matches the System.Buffers 4.6.1 pinned here — which is
        also the version Enigma.Core's own netstandard2.0 dependency group asks for. -->
+  <!-- Ulid 1.4.1 (MIT) mints the identifier the generator stamps on a license when the caller supplies
+       none: lexicographically sortable by creation time, unlike a GUID, so a directory listing of
+       issued licenses is in issue order. On netstandard2.0 it asks for System.Memory and
+       System.Runtime.CompilerServices.Unsafe, both of which the graph already closes over.
+       DeviceId 6.11.0 (MIT) backs DeviceIdentifier.Generate(). Only the base package is referenced —
+       machine name and OS version live there; the DeviceId.Windows/.Linux/.Mac packages exist for
+       hardware-bound components this library deliberately does not use. It multi-targets all three of
+       ours, and on netstandard2.0 alone it pulls Microsoft.DotNet.PlatformAbstractions 3.1.6. -->
   <ItemGroup>
     <PackageVersion Include="Enigma.Core" Version="1.1.0" />
     <PackageVersion Include="System.Buffers" Version="4.6.1" />
     <PackageVersion Include="System.Text.Json" Version="10.0.10" />
     <PackageVersion Include="PolySharp" Version="1.16.0" />
+    <PackageVersion Include="Ulid" Version="1.4.1" />
+    <PackageVersion Include="DeviceId" Version="6.11.0" />
   </ItemGroup>
   <!-- Tests (MTP-native: xunit.v3 only; coverlet.collector for coverage). No Microsoft.NET.Test.Sdk. -->
   <ItemGroup>

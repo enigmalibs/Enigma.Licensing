@@ -219,7 +219,7 @@ Branch: `feature/feature-03a9-phase02-keys`
 
 Acceptance: build + tests green, zero warnings; key files match the validated preview shape.
 
-## PHASE03 — Generator, validator, store & device identity — **TODO**
+## PHASE03 — Generator, validator, store & device identity — **DONE**
 
 Branch: `feature/feature-03a9-phase03-services`
 
