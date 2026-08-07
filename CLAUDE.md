@@ -8,15 +8,25 @@ Guidance for Claude Code (and other AI agents) working in this repository.
 xUnit v3 test project. `FEATURE-03A9-PHASE01` deleted the bootstrap placeholder and shipped the
 **license model and the `enigma-license/1` envelope format**; `PHASE02` shipped the **`enigma-key/1`
 key format and `IKeyService`**, and with it the first Enigma.Core reference; `PHASE03` shipped the
-**generator, validator, store and device identity** — the library now signs and checks licenses end to
-end, with all six algorithms round-tripping through save → load → validate. See *Shipped* below.
+**generator, validator, store and device identity**; `PHASE04` shipped **`AddEnigmaLicensing()` and the
+public-surface guard test**. See *Shipped* below.
 
-One thing is left in `FEATURE-03A9`: **there is still no DI registration.** `PHASE04` adds
-`AddEnigmaLicensing()`, the public-surface guard test and the final XML-doc pass. Those are the only
-parts of *Architecture & conventions* below that describe design rather than code — they are marked as
-such, and the agreed design is recorded in `docs/plan/`. Read the plan file before implementing any of
-it; the plan is the contract. Never write a doc, comment or summary that describes a planned type as if
-it already ships.
+**`FEATURE-03A9` is complete — the library is feature-done.** It signs and checks licenses end to end,
+all six algorithms round-trip through save → load → validate, all four services are DI-registrable, and
+a reflection guard enforces that nothing but `Enigma.Licensing` types reach the public surface.
+Everything in *Architecture & conventions* below now describes **code, not design**; the only things
+still marked planned are the four directories `FEATURE-179C` and `FEATURE-57BC` create. Never write a
+doc, comment or summary that describes a planned type as if it already ships.
+
+The next work item is `FEATURE-179C` (the Avalonia desktop app), then `FEATURE-57BC` (the v1.0.0
+release). Read the plan file in `docs/plan/` before implementing any of it; the plan is the contract.
+
+**One decision is due and deliberately outstanding:** the library is not trim/AOT-safe, because
+serialization is reflection-based. `FEATURE-03A9-PHASE04` was the point at which the model became
+complete enough to decide, and the decision was taken to defer the fix — a source-generated
+`JsonSerializerContext` covering both document formats — to `FEATURE-57BC-PHASE01`, where it can be
+judged against the released surface. See *Conventions* below. Do not let v1.0.0 ship without answering
+it.
 
 ## What this is
 
@@ -189,10 +199,48 @@ the internal seams `LicenseSignatures` (sign/verify dispatch), `ProductIdMatch` 
 was folded onto in the same change). `CoreAlgorithms` gained `ToRsaSignatureAlgorithm` and remains the
 only place naming an Enigma.Core algorithm type.
 
+### DI registration & the public-surface guard (FEATURE-03A9-PHASE04)
+
+`AddEnigmaLicensing()` — a single extension on `IServiceCollection`, `TryAddSingleton` for all four
+services — plus the reflection test that makes the isolation invariant enforceable rather than merely
+documented.
+
+- **The class is `EnigmaLicensingServiceCollectionExtensions`, in the
+  `Microsoft.Extensions.DependencyInjection` namespace.** The namespace is the Microsoft convention, so
+  the method appears without an extra `using`. The *qualified* class name is deliberate and differs from
+  Enigma.DataEncryption's bare `ServiceCollectionExtensions`: an app referencing both Enigma libraries
+  would otherwise have two identically named types in one namespace — fine when calling the method,
+  ambiguous for anyone naming the type.
+- **The store is registered through an explicit factory**, not `TryAddSingleton<ILicenseStore, LicenseStore>()`.
+  The container would pick the greediest satisfiable constructor, which happens to be the right one;
+  naming `ILicenseValidator` makes it a decision, so a consumer's own validator is what the store
+  validates with. The other three are plain interface→implementation registrations.
+- **Nothing from Enigma.Core is registered.** Each service news up the Core primitives it needs in its
+  own constructor — Core ships no registration extension, and there is no seam worth substituting. Four
+  registrations is the whole of it.
+- **`Microsoft.Extensions.DependencyInjection.Abstractions` is the one dependency deliberately visible
+  on the public surface**, since the extension takes and returns `IServiceCollection`. It earns the
+  exception by being a contract package: abstractions only, and already present in any app doing DI. The
+  floor is 9.x, matching Enigma.DataEncryption — NuGet resolves to the highest floor in the graph, so a
+  high floor here would drag a consumer's whole `Microsoft.Extensions.*` set forward.
+- **The guard test has two arms, because a namespace rule is not enough.** `PublicSurfaceIsolationTests`
+  walks every exported type's base types, interfaces, method returns and parameters, constructor
+  parameters and fields (unwrapping arrays, by-refs and generic arguments). The first arm rejects the
+  documented namespaces (`Enigma.Core.*`, `Org.BouncyCastle.*`). The second is an **assembly allowlist** —
+  `Enigma.Licensing`, the framework, and the DI abstractions — because **`Ulid` is declared as
+  `System.Ulid`** and no namespace rule could ever distinguish it from a framework type, and because an
+  allowlist fails closed for a dependency added later. A third test pins the walk itself, since the
+  failure mode of a reflection guard is passing vacuously. **If you add a dependency, expect the second
+  arm to fail the moment one of its types reaches a public member — that is the test working.**
+
+Types in place: `EnigmaLicensingServiceCollectionExtensions` (namespace
+`Microsoft.Extensions.DependencyInjection`, in the `Enigma.Licensing` assembly). No new library types
+otherwise — this phase's other half was the XML-doc and API review pass, which found nothing to change.
+
 ## Architecture & conventions
 
-These hold across the whole library. Everything here **ships** except where a heading says otherwise —
-`FEATURE-03A9-PHASE04` is the only outstanding piece, and it is called out where it applies.
+These hold across the whole library, and everything here **ships** — `FEATURE-03A9` is complete, so no
+heading below describes design rather than code.
 
 ### Algorithms
 
@@ -214,9 +262,9 @@ Matching is ordinal and case-sensitive both ways, and both directions use the un
 pattern rather than throwing — `AlgorithmIds` maps, it does not decide what an unmappable value
 means. Nothing outside that class may spell one of these strings.
 
-### Services (all four ship) & DI (**PHASE04 — planned**)
+### Services & DI
 
-Four interfaces, all shipped: `IKeyService` in `Enigma.Licensing.Keys` (generate, save, load keys) and
+Four interfaces: `IKeyService` in `Enigma.Licensing.Keys` (generate, save, load keys) and
 `ILicenseGenerator`, `ILicenseValidator`, `ILicenseStore` in `Enigma.Licensing`. They are sealed
 classes with a public parameterless constructor that news up the Enigma.Core services they need — Core
 ships no DI extension of its own, so there is nothing to inject. All are stateless and safe to share
@@ -224,9 +272,9 @@ except `LicenseStore`, which is a registry and is guarded by a lock; it alone ta
 constructor, `LicenseStore(ILicenseValidator)`, because it is the one service that genuinely composes
 with another rather than wrapping Core directly.
 
-**Still planned:** registration, as a single `AddEnigmaLicensing()` extension in the
-`Microsoft.Extensions.DependencyInjection` namespace (predecessor convention), doing `TryAddSingleton`
-for all four.
+`AddEnigmaLicensing()` registers all four with `TryAddSingleton`, in the
+`Microsoft.Extensions.DependencyInjection` namespace (predecessor convention). See *DI registration &
+the public-surface guard* above for the store's explicit factory and the naming of the extension class.
 
 The model — `License`, `LicenseRequest`, `LicenseEnvelope`, `LicenseValidationResult` — is
 **immutable**: sealed `init`-only records, varied with `with`. Dates are `DateTimeOffset`, serialized
@@ -264,8 +312,11 @@ application that locks licenses to devices must supply it on every call.
 **Load-bearing invariant — only `Enigma.Licensing` types on the public surface.** Enigma.Core, Ulid and
 DeviceId are all implementation details: no `Enigma.Core.*`, `Org.BouncyCastle.*`, `Ulid` or
 `DeviceId.*` type may appear on any exported type or member. (That is why `DeviceIdentifier.Generate()`
-returns a plain `string`.) `FEATURE-03A9-PHASE04` adds a reflection guard test modelled on
-Enigma.Core's `BouncyCastleIsolationTests`. Keep it green.
+returns a plain `string`.) The sole deliberate exception is
+`Microsoft.Extensions.DependencyInjection.Abstractions`, because `AddEnigmaLicensing()` takes and returns
+an `IServiceCollection`. `PublicSurfaceIsolationTests` enforces all of this by reflection — modelled on
+Enigma.Core's `BouncyCastleIsolationTests`, with a second assembly-allowlist arm that catches what a
+namespace rule cannot. **Keep it green**, and add to the allowlist only with the reason written down.
 
 ## Project layout
 
@@ -294,6 +345,7 @@ src/Enigma.Licensing/                The library
   LicenseFailure.cs                  The seven failure reasons, in check order
   LicenseValidationResult.cs         The verdict record (+ internal Valid/Invalid factories)
   DeviceIdentifier.cs                Generate() — machine name + OS version, hashed
+  EnigmaLicensingServiceCollectionExtensions.cs   AddEnigmaLicensing() — namespace M.E.DependencyInjection
   Internal/AlgorithmIds.cs           Single source of truth for enum ↔ wire strings
   Internal/CoreAlgorithms.cs         The enum → Enigma.Core primitive map (the only place naming one)
   Internal/DocumentFile.cs           Path guard + open-for-read / create-with-parent-directories
@@ -321,6 +373,8 @@ tests/Enigma.Licensing.UnitTests/    xUnit v3 test suite
   Api/                               Tests over the public surface
     SignedLicenseFixture.cs          One generate-once key pair per algorithm + the theory data
     SignedLicenseTestData.cs         Requests with real windows; save/load/edit an envelope
+    PublicSurfaceIsolationTests.cs   The reflection guard: forbidden namespaces + assembly allowlist
+  DependencyInjection/               AddEnigmaLicensing() — resolution, lifetimes, TryAdd, round-trips
   Internal/                          Tests over the internal seams (needs InternalsVisibleTo)
   Keys/                              Key generation, storage & encryption + their shared fixtures
   Model/                             Tests over the records
@@ -343,9 +397,12 @@ There is **no CI workflow**, deliberately — consistent with every sibling Enig
   surface is exercised through the `net8.0` paths. The planned desktop app and its test project are
   **net10.0** only.
 - **Currently pinned** in `Directory.Packages.props` — only what the code actually references:
-  `Enigma.Core` 1.1.0, `Ulid` 1.4.1 and `DeviceId` 6.11.0 (all three TFMs), `PolySharp` 1.16.0,
+  `Enigma.Core` 1.1.0, `Microsoft.Extensions.DependencyInjection.Abstractions` 9.0.18, `Ulid` 1.4.1 and
+  `DeviceId` 6.11.0 (all three TFMs), `PolySharp` 1.16.0,
   `System.Buffers` 4.6.1 and `System.Text.Json` 10.0.10 (those three **netstandard2.0 only** in the
-  library), `xunit.v3` 3.2.2, `coverlet.collector` 10.0.1. Referencing `System.Buffers` or
+  library), `xunit.v3` 3.2.2, `coverlet.collector` 10.0.1,
+  `Microsoft.Extensions.DependencyInjection` 9.0.18 (tests only — the concrete container, so the
+  registration tests can build a real `ServiceProvider`). Referencing `System.Buffers` or
   `System.Text.Json` on net8.0+ raises
   NU1510 and fails the zero-warning build — both are framework-provided there, and the library's JSON
   usage stays inside what System.Text.Json 8.0 supports. PolySharp (compile-only, `PrivateAssets=all`)
@@ -362,9 +419,18 @@ There is **no CI workflow**, deliberately — consistent with every sibling Enig
   `.Linux` / `.Mac` packages exist for hardware-bound components this library deliberately does not
   use), and on netstandard2.0 alone it pulls `Microsoft.DotNet.PlatformAbstractions` 3.1.6 — a legacy
   package worth a look at FEATURE-57BC-PHASE01's third-party licence audit.
-- **Runtime dependencies so far: Enigma.Core, Ulid and DeviceId everywhere; System.Text.Json on
-  netstandard2.0 only.** Still to land:
-  Microsoft.Extensions.DependencyInjection.Abstractions at a low floor (`PHASE04`).
+- **Microsoft.Extensions.DependencyInjection.Abstractions is referenced unconditionally too** (MIT), and
+  is the **only** dependency whose types are allowed on the public surface — `AddEnigmaLicensing()` takes
+  and returns `IServiceCollection`. Abstractions only, never the concrete container: a library registers
+  services, it does not build the provider. It is not part of any shared framework, so unlike
+  System.Text.Json it raises no NU1510 on net8.0+. The **9.x floor is deliberate** (Enigma.DataEncryption
+  precedent): NuGet resolves a package to the highest floor in the graph, so a high floor here would drag
+  a consumer's whole `Microsoft.Extensions.*` set forward. On netstandard2.0 alone it pulls
+  `Microsoft.Bcl.AsyncInterfaces` 9.0.18 and `System.Threading.Tasks.Extensions` 4.5.4 — both inbox on
+  net8.0+, and both for the same release-time licence audit as PlatformAbstractions.
+- **Runtime dependencies, final for the library: Enigma.Core, Microsoft.Extensions.DependencyInjection.Abstractions,
+  Ulid and DeviceId everywhere; System.Text.Json on netstandard2.0 only.** Nothing further is expected —
+  `FEATURE-03A9` is complete, so the next pin to land belongs to the desktop app.
   Planned app dependencies: Avalonia 12.1.1 (the coupled Avalonia set is bumped only as a unit),
   Enigma.Avalonia.Desktop 1.0.0, Enigma.Icons / Enigma.Icons.Phosphor / Enigma.Icons.Avalonia 1.0.0,
   CommunityToolkit.Mvvm 8.4.2, Microsoft.Extensions.Hosting 10.0.10.
@@ -397,18 +463,20 @@ only implicit using in the test project. Test fixtures are copied by a `**/*.jso
 
 The xunit.v3 analyzers run at warning level, so under `TreatWarningsAsErrors` **they are build
 errors**. The one that bites constantly is `xUnit1051`: any call taking a `CancellationToken` must be
-passed `TestContext.Current.CancellationToken`. `LicenseEnvelopeTests` and the `Keys/` and `Api/`
-suites each keep a `private static CancellationToken Token => TestContext.Current.CancellationToken;`
+passed `TestContext.Current.CancellationToken`. `LicenseEnvelopeTests`, the `Keys/` and `Api/` suites
+and `DependencyInjection/` each keep a
+`private static CancellationToken Token => TestContext.Current.CancellationToken;`
 for this — copy that pattern rather than suppressing the rule.
 
-**Key generation is the expensive part of the suite** (most of the ~11 s run): ten RSA pairs, one at
-4096 bits, plus Argon2id at 64 MiB per encrypted round-trip. Two collection fixtures exist so nothing
-generates a key it does not need to:
+**Key generation is the expensive part of the suite** (most of the ~13 s run over 836 cases): ten RSA
+pairs, one at 4096 bits, plus Argon2id at 64 MiB per encrypted round-trip. Two collection fixtures exist
+so nothing generates a key it does not need to:
 
 - `GeneratedKeyFixture` (`Keys/`) — one RSA-2048 and one ML-DSA-65 pair, for the key-format suites.
 - `SignedLicenseFixture` (`Api/`) — one pair per `LicenseSignatureAlgorithm` member, RSA at 2048, for
   the signing suites. It also exposes `AllAlgorithms` as theory data; `Rsa` and `MLDsa` are the
-  defaults for a test that just needs *a* key of each shape.
+  defaults for a test that just needs *a* key of each shape. The `DependencyInjection/` suite joins
+  this collection too, rather than generating its own — a registration test needs *a* key, not a new one.
 
 Generate outside a fixture only when generation is what the test is about.
 
@@ -444,7 +512,8 @@ MTP coverage needs `Microsoft.Testing.Extensions.CodeCoverage`. Measure before t
 - **Error contract.** As specified above; it is part of the public API and is asserted by tests.
   Changing it is a breaking change.
 - **Public surface.** Only `Enigma.Licensing` types — never an `Enigma.Core.*` or
-  `Org.BouncyCastle.*` type. Keep the isolation guard test green once it exists.
+  `Org.BouncyCastle.*` type — nor a `Ulid` or `DeviceId.*` one. The DI abstractions are the sole
+  exception. Keep `PublicSurfaceIsolationTests` green.
 - **No legacy compatibility.** Never add a reader, converter or fallback for Enigma.LicenseManager
   licenses or keys.
 - **Secrets are `char[]`, and the caller owns them.** Nothing in this library modifies or clears a
@@ -453,9 +522,10 @@ MTP coverage needs `Microsoft.Testing.Extensions.CodeCoverage`. Measure before t
 - **Serialization is reflection-based, so the library is not trim/AOT-safe.** A consumer publishing
   with `PublishAot`, or with `JsonSerializerIsReflectionEnabledByDefault=false`, gets
   `InvalidOperationException` on the first serialize. Fixing it means a source-generated
-  `JsonSerializerContext` wired into `LicenseJson`, covering the license *and* key documents — worth
-  deciding deliberately once the model is complete (PHASE04 or the release phase), not discovering at
-  v1.0.0.
+  `JsonSerializerContext` wired into `LicenseJson`, covering the license *and* key documents. The model
+  became complete at `FEATURE-03A9-PHASE04`, which is where the decision fell due; it was **deliberately
+  deferred to `FEATURE-57BC-PHASE01`**, to be judged against the released surface rather than discovered
+  at v1.0.0. Answer it there — do not let the release slip past it.
 - **Documentation.** Every public member carries XML docs; `GenerateDocumentationFile=true` is on
   from bootstrap, so a missing comment fails the zero-warning build. Per-category usage guides will
   live under `docs/guides/` (`FEATURE-57BC-PHASE02`).
@@ -481,5 +551,5 @@ plan's acceptance criteria are met, the roadmap/plan statuses are updated, and t
 written. Commits are left to the maintainer.
 
 The sequence is a hard dependency chain: `FEATURE-2FE8` (repo skeleton — **done**) →
-`FEATURE-03A9` (licensing core library, 4 phases — **PHASE01–03 done**) → `FEATURE-179C` (desktop app,
-4 phases) → `FEATURE-57BC` (v1.0.0 release, 4 phases).
+`FEATURE-03A9` (licensing core library, 4 phases — **all done**) → `FEATURE-179C` (desktop app,
+4 phases — **next**) → `FEATURE-57BC` (v1.0.0 release, 4 phases).

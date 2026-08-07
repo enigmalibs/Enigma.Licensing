@@ -3,8 +3,7 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
   <!-- Only what the code actually references is pinned here. Every later dev adds its own pins when
-       the reference lands, not before: Microsoft.Extensions.DependencyInjection.Abstractions
-       (FEATURE-03A9-PHASE04), and the desktop set — Avalonia 12.1.1 (version-coupled, bump as a
+       the reference lands, not before: the desktop set — Avalonia 12.1.1 (version-coupled, bump as a
        unit), Enigma.Avalonia.Desktop 1.0.0, Enigma.Icons/.Phosphor/.Avalonia 1.0.0,
        CommunityToolkit.Mvvm 8.4.2, Microsoft.Extensions.Hosting 10.0.10 (FEATURE-179C). -->
   <!-- Library. Enigma.Core is the cryptographic engine behind every service here and is referenced on
@@ -24,17 +23,30 @@
        machine name and OS version live there; the DeviceId.Windows/.Linux/.Mac packages exist for
        hardware-bound components this library deliberately does not use. It multi-targets all three of
        ours, and on netstandard2.0 alone it pulls Microsoft.DotNet.PlatformAbstractions 3.1.6. -->
+  <!-- Microsoft.Extensions.DependencyInjection.Abstractions 9.0.18 (MIT) is what AddEnigmaLicensing()
+       extends, and the ONLY dependency whose types are allowed on this library's public surface — the
+       extension method takes and returns IServiceCollection, which is the whole point of it. The floor
+       is deliberately low: 9.x, matching Enigma.DataEncryption, because NuGet resolves a package
+       reference to the highest floor any project in the graph asks for, so a high floor here would drag
+       an application's whole Microsoft.Extensions.* set forward. It multi-targets all three of ours;
+       on netstandard2.0 it pulls Microsoft.Bcl.AsyncInterfaces 9.0.18 and
+       System.Threading.Tasks.Extensions 4.5.4 (net8.0+ have both inbox). -->
   <ItemGroup>
     <PackageVersion Include="Enigma.Core" Version="1.1.0" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.18" />
     <PackageVersion Include="System.Buffers" Version="4.6.1" />
     <PackageVersion Include="System.Text.Json" Version="10.0.10" />
     <PackageVersion Include="PolySharp" Version="1.16.0" />
     <PackageVersion Include="Ulid" Version="1.4.1" />
     <PackageVersion Include="DeviceId" Version="6.11.0" />
   </ItemGroup>
-  <!-- Tests (MTP-native: xunit.v3 only; coverlet.collector for coverage). No Microsoft.NET.Test.Sdk. -->
+  <!-- Tests (MTP-native: xunit.v3 only; coverlet.collector for coverage). No Microsoft.NET.Test.Sdk.
+       Microsoft.Extensions.DependencyInjection is the concrete container — needed only to build a real
+       ServiceProvider and assert what AddEnigmaLicensing() registered. Same version as the abstractions
+       the library pins, so the test graph resolves to exactly the floor a consumer would get. -->
   <ItemGroup>
     <PackageVersion Include="xunit.v3" Version="3.2.2" />
     <PackageVersion Include="coverlet.collector" Version="10.0.1" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="9.0.18" />
   </ItemGroup>
 </Project>

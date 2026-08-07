@@ -14,8 +14,9 @@ namespace Enigma.Licensing;
 /// <remarks>
 /// Stateless and safe to share: it holds only the Enigma.Core verifying services and an
 /// <see cref="IKeyService"/> for the overloads that read a key, all of which are themselves stateless.
-/// A single instance per application is the intended use, which is why the DI registration makes it a
-/// singleton.
+/// A single instance per application is the intended use, which is why
+/// <see cref="Microsoft.Extensions.DependencyInjection.EnigmaLicensingServiceCollectionExtensions.AddEnigmaLicensing"/>
+/// registers it as a singleton.
 /// </remarks>
 public sealed class LicenseValidator : ILicenseValidator
 {

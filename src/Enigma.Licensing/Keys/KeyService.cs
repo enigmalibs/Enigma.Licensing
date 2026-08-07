@@ -19,7 +19,8 @@ namespace Enigma.Licensing.Keys;
 /// <para>
 /// Stateless and safe to share: it holds only the two Enigma.Core services it dispatches to, both of
 /// which are themselves stateless. A single instance per application is the intended use, which is why
-/// the DI registration makes it a singleton.
+/// <see cref="Microsoft.Extensions.DependencyInjection.EnigmaLicensingServiceCollectionExtensions.AddEnigmaLicensing"/>
+/// registers it as a singleton.
 /// </para>
 /// <para>
 /// RSA keys are generated <b>unencrypted</b> at the Enigma.Core layer even when a password is supplied.

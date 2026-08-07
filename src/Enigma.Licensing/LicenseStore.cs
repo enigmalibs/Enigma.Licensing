@@ -44,8 +44,11 @@ public sealed class LicenseStore : ILicenseStore
     /// </summary>
     /// <param name="validator">The validator every query goes through.</param>
     /// <remarks>
-    /// The constructor dependency injection resolves. It exists because the store is the one service
-    /// here that genuinely composes with another rather than wrapping Enigma.Core directly.
+    /// The constructor
+    /// <see cref="Microsoft.Extensions.DependencyInjection.EnigmaLicensingServiceCollectionExtensions.AddEnigmaLicensing"/>
+    /// resolves. It exists because the store is the one service here that genuinely composes with
+    /// another rather than wrapping Enigma.Core directly — so registering a custom
+    /// <see cref="ILicenseValidator"/> changes what the store validates with, too.
     /// </remarks>
     /// <exception cref="ArgumentNullException"><paramref name="validator"/> is <see langword="null"/>.</exception>
     public LicenseStore(ILicenseValidator validator) =>

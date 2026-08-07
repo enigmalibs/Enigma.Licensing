@@ -18,9 +18,13 @@
   <ItemGroup>
     <Using Include="Xunit" />
   </ItemGroup>
+  <!-- Microsoft.Extensions.DependencyInjection is the concrete container. The library references only
+       the abstractions, so the registration tests bring the implementation themselves — that is the
+       only way to build a real ServiceProvider and assert what AddEnigmaLicensing() put in it. -->
   <ItemGroup>
     <PackageReference Include="xunit.v3" />
     <PackageReference Include="coverlet.collector" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../../src/Enigma.Licensing/Enigma.Licensing.csproj" />

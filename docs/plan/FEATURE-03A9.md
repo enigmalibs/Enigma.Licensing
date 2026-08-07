@@ -1,6 +1,6 @@
 # FEATURE-03A9 — Licensing core library
 
-**Status:** IN PROGRESS
+**Status:** DONE
 **Type:** multi-phase (4 phases, one branch per phase: `feature/feature-03a9-phaseNN-<slug>`)
 
 ## Objective
@@ -248,7 +248,7 @@ Branch: `feature/feature-03a9-phase03-services`
 Acceptance: build + tests green, zero warnings; validation returns correct `LicenseFailure` for
 every matrix row.
 
-## PHASE04 — DI registration, API polish & XML docs — **TODO**
+## PHASE04 — DI registration, API polish & XML docs — **DONE**
 
 Branch: `feature/feature-03a9-phase04-di-polish`
 
