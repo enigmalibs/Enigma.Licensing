@@ -1,3 +1,76 @@
+# Enigma.Licensing v2.0.0 Release Notes
+
+A **breaking** release with one theme: **feature flags and claims are gone.** Nothing in the library
+ever decided anything from them — the validator settles authenticity, then the validity window, the
+product identifier and the device identifier, and stops — so both were signed, displayed and
+documented while no check ever read them. They are removed rather than deprecated.
+
+**Nothing else about the library moved.** Both document formats are byte-identical, all six signature
+schemes behave as before, the check order and the seven failure reasons are unchanged, the error
+contract is unchanged, and the target frameworks are unchanged. **Every licence issued by 1.0.0 still
+validates.**
+
+## Breaking Changes & Migration
+
+Five public members were deleted outright — no `[Obsolete]`, no shim, no compatibility reader:
+
+| Removed | Was |
+|---|---|
+| `License.Features` | `IReadOnlyCollection<string>` |
+| `License.Claims` | `IReadOnlyDictionary<string, string>` |
+| `License.HasFeature(string)` | `bool` |
+| `LicenseRequest.Features` | `IReadOnlyCollection<string>?` |
+| `LicenseRequest.Claims` | `IReadOnlyDictionary<string, string>?` |
+
+**The break is a compile error and has no runtime component.** Removed members were deleted rather
+than hidden, so a 1.x call site fails to build instead of behaving differently — the build error list
+is the whole to-do list. Delete the initializers on your `LicenseRequest`s, and replace any
+`HasFeature`/`Claims` read with whatever your application already uses to decide entitlements.
+
+**Licences issued by 1.0.0 remain valid, and no file needs reissuing or converting.** A 1.0.0 payload
+carries `"features"` and `"claims"`; a payload member this library does not know is **ignored**, not
+rejected. Nothing ever re-serializes a licence in order to check one — the founding invariant of the
+format — so the signature still covers exactly the bytes it was made over. The two fields simply stop
+surfacing on `License`.
+
+The full migration instructions, including what deliberately does *not* change, are in
+`docs/migrations/1.0.0-to-2.0.0.md` in the repository.
+
+## Fixes
+
+- Nothing. No defect was reported against 1.0.0.
+
+## Dependencies
+
+- **System.Text.Json 10.0.10 → 10.0.12** (netstandard2.0 only, where it is not framework-provided) —
+  a servicing patch that moves nothing else in the graph.
+- **Held back deliberately:** `Microsoft.Extensions.DependencyInjection.Abstractions` stays on its
+  **9.x** floor (10.0.12 is available). NuGet resolves a package to the highest floor in the graph, so
+  raising it here would drag a consumer's whole `Microsoft.Extensions.*` set forward for no gain —
+  this library uses only `IServiceCollection` and `TryAddSingleton`.
+- Unchanged: **Enigma.Core 2.0.0**, **Ulid 1.4.1**, **DeviceId 6.11.0**, **System.Buffers 4.6.1**
+  (netstandard2.0 only). No dependency was added or removed, so `FEATURE-57BC-PHASE01`'s third-party
+  licence audit stands as written.
+
+## Compatibility
+
+- Targets **netstandard2.0**, **net8.0** and **net10.0** — **unchanged** from 1.0.0. No target
+  framework was added or dropped.
+- The **`enigma-license/1` and `enigma-key/1` formats are unchanged**. A licence or key file written
+  by 1.0.0 is read by 2.0.0 exactly as before; a licence written by 2.0.0 differs only in that its
+  payload no longer carries two optional members.
+- Still trim- and AOT-safe: serialization stays source-generated, with the analyzers enabled on the
+  modern targets.
+- The companion **Enigma.Licensing.Desktop** application also moves to 2.0.0. It loses the generate
+  page's *Features* and *Claims* sections and the validate card's two matching rows, and it gains
+  proper branding — a white key on a blue rounded square, replacing the placeholder icon inherited
+  from the predecessor application. A profile saved by 1.0.0 still loads, with its two now-unknown
+  fields ignored; `formatVersion` stays `1`.
+
+## Version
+
+- **2.0.0**, superseding 1.0.0. Major, because public members were removed from a published package.
+
 # Enigma.Licensing v1.0.0 Release Notes
 
 The first public release of **Enigma.Licensing** — a .NET library that generates signed software
@@ -5,7 +78,7 @@ licenses and checks them, signing with classical RSA or post-quantum ML-DSA keys
 follows one rule: a license's signature covers the stored payload bytes exactly, with no
 canonicalization step and no string built for signing, so a signer and a verifier can never disagree
 about what was signed. All cryptography comes from
-[Enigma.Core](https://www.nuget.org/packages/Enigma.Core) 1.1.0, whose types — like those of every
+[Enigma.Core](https://www.nuget.org/packages/Enigma.Core) 2.0.0, whose types — like those of every
 other dependency bar the DI abstractions — never appear on the public API.
 
 ## Feature overview
@@ -53,7 +126,7 @@ other dependency bar the DI abstractions — never appear on the public API.
 ## Compatibility
 
 - Targets **netstandard2.0**, **net8.0** and **net10.0**.
-- Built on **Enigma.Core 1.1.0**. Other runtime dependencies:
+- Built on **Enigma.Core 2.0.0**. Other runtime dependencies:
   **Microsoft.Extensions.DependencyInjection.Abstractions 9.0.18** (the one dependency deliberately
   visible on the public surface, since `AddEnigmaLicensing()` takes and returns an
   `IServiceCollection`), **Ulid 1.4.1** and **DeviceId 6.11.0**; **System.Buffers 4.6.1** and

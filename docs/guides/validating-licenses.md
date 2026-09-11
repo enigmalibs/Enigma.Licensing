@@ -253,7 +253,7 @@ LicenseValidationResult result = await validator.ValidateAsync(
 Console.WriteLine(result.IsValid);
 ```
 
-### Gating features
+### Reading what a valid license says
 
 ```csharp
 using System;
@@ -269,14 +269,8 @@ LicenseValidationResult result = await validator.ValidateAsync(
 
 if (result.IsValid && result.License is { } license)
 {
-    bool canExport = license.HasFeature("export-pdf");
-
-    int seats = license.Claims.TryGetValue("seats", out string? value) &&
-                int.TryParse(value, out int parsed)
-        ? parsed
-        : 1;
-
-    Console.WriteLine($"PDF export: {canExport}, seats: {seats}");
+    Console.WriteLine($"Licensed to {license.Owner ?? "(not stated)"}");
+    Console.WriteLine($"Expires: {license.ValidUntil?.ToString("u") ?? "never"}");
 }
 ```
 
@@ -287,7 +281,7 @@ authentic.
 
 `ILicenseStore` is the shape most applications want: load whatever licenses were installed at
 start-up, `Add` each with the public key it should be checked against, then ask `HasValidLicense`
-wherever a feature needs gating.
+wherever the application needs to know whether it is licensed.
 
 **Every query re-validates, and nothing is cached** — not the verdict, not the parsed license. That
 costs a signature verification per query and buys the only behaviour that is actually correct: a

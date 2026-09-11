@@ -16,12 +16,13 @@
          never packed, so this is a discipline setting rather than a packaging one. -->
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <!-- The app's release version, set here rather than solution-wide: Directory.Build.props declares no
-         <Version> because the library and the app version independently. It happens to match the SDK
-         default the app carried until FEATURE-57BC-PHASE01, so nothing observable moves — but it is now
-         a stated fact rather than a default, which is what the settings page's about section reports,
-         what app.manifest's assemblyIdentity records, and what PHASE04's publish scripts read back with
-         `dotnet msbuild -getProperty:Version` to name the distribution zips. -->
-    <Version>1.0.0</Version>
+         <Version> because the library and the app version independently. It is what the settings page's
+         about section reports, what app.manifest's assemblyIdentity mirrors by hand, and what
+         scripts/publish.* read back with `dotnet msbuild -getProperty:Version` to name the distribution
+         zips. FEATURE-82E5 took it to 2.0.0 alongside the library: the same change breaks both — the
+         generate page lost two sections, the licence card two rows, and a saved profile two fields — so
+         they happen to land on one number rather than being coupled to it. -->
+    <Version>2.0.0</Version>
   </PropertyGroup>
   <!-- LangVersion / Nullable / ImplicitUsings / TreatWarningsAsErrors come from Directory.Build.props;
        package versions from Directory.Packages.props (Central Package Management). -->

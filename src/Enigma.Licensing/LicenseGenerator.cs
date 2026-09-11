@@ -145,9 +145,6 @@ public sealed class LicenseGenerator : ILicenseGenerator
             ValidFrom = request.ValidFrom,
             ValidUntil = request.ValidUntil,
             Owner = request.Owner,
-            // License coerces a null of its own accord; assigning through keeps that in one place.
-            Features = request.Features!,
-            Claims = request.Claims!,
         };
     }
 

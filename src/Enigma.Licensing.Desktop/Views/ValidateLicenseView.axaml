@@ -2,7 +2,6 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             xmlns:sys="using:System"
              xmlns:controls="using:Enigma.Avalonia.Desktop.Controls"
              xmlns:editors="using:Enigma.Avalonia.Desktop.Controls.Editors"
              xmlns:ei="https://github.com/josueclement/Enigma.Icons"
@@ -195,34 +194,6 @@
 
           <TextBlock Classes="field" Text="Device" />
           <SelectableTextBlock Classes="value mono" Text="{Binding Summary.DeviceId}" />
-
-          <StackPanel Spacing="4" IsVisible="{Binding Summary.HasFeatures}">
-            <TextBlock Classes="field" Text="Features" />
-            <ItemsControl ItemsSource="{Binding Summary.Features}">
-              <ItemsControl.ItemTemplate>
-                <DataTemplate x:DataType="sys:String">
-                  <SelectableTextBlock Classes="value mono" Text="{Binding}" />
-                </DataTemplate>
-              </ItemsControl.ItemTemplate>
-            </ItemsControl>
-          </StackPanel>
-
-          <StackPanel Spacing="4" IsVisible="{Binding Summary.HasClaims}">
-            <TextBlock Classes="field" Text="Claims" />
-            <ItemsControl ItemsSource="{Binding Summary.Claims}">
-              <ItemsControl.ItemTemplate>
-                <DataTemplate x:DataType="vm:LicenseClaimEntry">
-                  <Grid ColumnDefinitions="Auto,*" Margin="0,2">
-                    <SelectableTextBlock Classes="field mono" Text="{Binding Key}" VerticalAlignment="Center" />
-                    <SelectableTextBlock Grid.Column="1"
-                                         Classes="value"
-                                         Text="{Binding Value}"
-                                         VerticalAlignment="Center" />
-                  </Grid>
-                </DataTemplate>
-              </ItemsControl.ItemTemplate>
-            </ItemsControl>
-          </StackPanel>
 
           <TextBlock Classes="hint"
                      Text="Times are local, with the offset. &quot;Valid until&quot; is the first instant the licence is no longer usable, so a licence issued through the end of a day shows midnight on the next one." />

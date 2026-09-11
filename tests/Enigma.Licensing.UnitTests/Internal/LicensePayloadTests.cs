@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Text;
 using System.Text.Json;
 using Enigma.Licensing.Internal;
@@ -28,9 +27,7 @@ public sealed class LicensePayloadTests
             "\"deviceId\":\"DESKTOP-ABC123\"," +
             "\"validFrom\":\"2026-01-02T03:04:05+00:00\"," +
             "\"validUntil\":\"2027-01-02T03:04:05+00:00\"," +
-            "\"owner\":\"Contoso Ltd\"," +
-            "\"features\":[\"export\",\"sync\"]," +
-            "\"claims\":{\"seats\":\"25\",\"tier\":\"pro\"}}",
+            "\"owner\":\"Contoso Ltd\"}",
             Json(LicenseTestData.FullLicense()));
 
     /// <summary>
@@ -41,8 +38,7 @@ public sealed class LicensePayloadTests
         Assert.Equal(
             "{\"id\":\"01JYQ7ZK3M8X2N4P6R8T0V2W4Y\"," +
             "\"createdAt\":\"2026-08-06T12:34:56+02:00\"," +
-            "\"productId\":\"MyApp\"," +
-            "\"features\":[],\"claims\":{}}",
+            "\"productId\":\"MyApp\"}",
             Json(LicenseTestData.MinimalLicense()));
 
     /// <summary>
@@ -74,9 +70,6 @@ public sealed class LicensePayloadTests
         Assert.Equal(original.ValidFrom, restored.ValidFrom);
         Assert.Equal(original.ValidUntil, restored.ValidUntil);
         Assert.Equal(original.Owner, restored.Owner);
-        Assert.Equal(original.Features, restored.Features);
-        Assert.Equal(original.Claims, restored.Claims);
-        Assert.True(restored.HasFeature("sync"));
     }
 
     [Fact]
@@ -88,8 +81,6 @@ public sealed class LicensePayloadTests
         Assert.Null(restored.ValidFrom);
         Assert.Null(restored.ValidUntil);
         Assert.Null(restored.Owner);
-        Assert.Empty(restored.Features);
-        Assert.Empty(restored.Claims);
     }
 
     /// <summary>
@@ -118,20 +109,25 @@ public sealed class LicensePayloadTests
     }
 
     /// <summary>
-    /// A hand-written payload may say <c>null</c> where the model promises a collection. It decodes to
-    /// an empty one rather than tripping the never-null guarantee.
+    /// <b>A payload written by 1.0 still decodes.</b> Those documents carry <c>features</c> and
+    /// <c>claims</c>, two members this model no longer has, and the codec skips an unmapped member
+    /// rather than rejecting the document. That is what keeps every license ever issued valid across
+    /// the 2.0 removal: nothing re-serializes a license to check one, so the signature still covers
+    /// the bytes it always did and only the two fields stop being visible.
     /// </summary>
     [Fact]
-    public void Deserialize_TreatsNullCollectionsAsEmpty()
+    public void Deserialize_IgnoresTheFeaturesAndClaimsA10LicenseCarries()
     {
         byte[] payload = Encoding.UTF8.GetBytes(
-            "{\"id\":\"X\",\"createdAt\":\"2026-08-06T12:34:56+02:00\",\"productId\":\"MyApp\"," +
-            "\"features\":null,\"claims\":null}");
+            "{\"id\":\"01JYQ7ZK3M8X2N4P6R8T0V2W4Y\",\"createdAt\":\"2026-08-06T12:34:56+02:00\"," +
+            "\"productId\":\"MyApp\",\"owner\":\"Contoso Ltd\"," +
+            "\"features\":[\"export\",\"sync\"],\"claims\":{\"seats\":\"25\",\"tier\":\"pro\"}}");
 
         License license = LicensePayload.Deserialize(payload);
 
-        Assert.Empty(license.Features);
-        Assert.Empty(license.Claims);
+        Assert.Equal("01JYQ7ZK3M8X2N4P6R8T0V2W4Y", license.Id);
+        Assert.Equal("MyApp", license.ProductId);
+        Assert.Equal("Contoso Ltd", license.Owner);
     }
 
     /// <summary>
@@ -169,25 +165,24 @@ public sealed class LicensePayloadTests
         Assert.Throws<ArgumentNullException>(() => LicensePayload.Deserialize(null!));
 
     /// <summary>
-    /// Claim keys and values are opaque strings — the codec escapes whatever is in them and gives it
-    /// back unchanged, so a claim carrying quotes, braces or non-ASCII text cannot corrupt the payload.
+    /// A product identifier and an owner are opaque strings — the codec escapes whatever is in them
+    /// and gives it back unchanged, so a name carrying quotes, braces or non-ASCII text cannot corrupt
+    /// the payload.
     /// </summary>
     [Fact]
-    public void RoundTrip_SurvivesAwkwardClaimAndFeatureText()
+    public void RoundTrip_SurvivesAwkwardText()
     {
         License license = LicenseTestData.MinimalLicense() with
         {
-            Features = ["a\"b", "c\\d", "é→ "],
-            Claims = new Dictionary<string, string>
-            {
-                ["key\"with\"quotes"] = "{\"nested\":true}",
-                ["ünïcode"] = "naïve\nnewline",
-            },
+            ProductId = "a\"b c\\d",
+            Owner = "{\"nested\":true} — naïve\nnewline",
+            DeviceId = "ünïcode",
         };
 
         License restored = LicensePayload.Deserialize(LicensePayload.Serialize(license));
 
-        Assert.Equal(license.Features, restored.Features);
-        Assert.Equal(license.Claims, restored.Claims);
+        Assert.Equal(license.ProductId, restored.ProductId);
+        Assert.Equal(license.Owner, restored.Owner);
+        Assert.Equal(license.DeviceId, restored.DeviceId);
     }
 }

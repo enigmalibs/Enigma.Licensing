@@ -1,6 +1,4 @@
 using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.ComponentModel.DataAnnotations;
 using System.IO;
 using System.Linq;
@@ -87,10 +85,6 @@ public sealed class GenerateLicenseViewModel : ObservableValidator
         _clipboard = clipboard;
 
         UseThisMachineCommand = new RelayCommand(OnUseThisMachine);
-        AddFeatureCommand = new RelayCommand(OnAddFeature, CanAddFeature);
-        RemoveFeatureCommand = new RelayCommand<string>(OnRemoveFeature);
-        AddClaimCommand = new RelayCommand(OnAddClaim, CanAddClaim);
-        RemoveClaimCommand = new RelayCommand<LicenseClaimEntry>(OnRemoveClaim);
         BrowsePrivateKeyPathCommand = new AsyncRelayCommand(OnBrowsePrivateKeyPathAsync);
         BrowseOutputPathCommand = new AsyncRelayCommand(OnBrowseOutputPathAsync);
         GenerateLicenseCommand = new AsyncRelayCommand(OnGenerateLicenseAsync, CanGenerateLicense);
@@ -101,18 +95,6 @@ public sealed class GenerateLicenseViewModel : ObservableValidator
 
     /// <summary>Gets the command that fills the device field with this machine's identifier.</summary>
     public RelayCommand UseThisMachineCommand { get; }
-
-    /// <summary>Gets the command that adds the typed feature flag to the list.</summary>
-    public RelayCommand AddFeatureCommand { get; }
-
-    /// <summary>Gets the command that takes one feature flag back off the list.</summary>
-    public RelayCommand<string> RemoveFeatureCommand { get; }
-
-    /// <summary>Gets the command that adds the typed key and value to the claims.</summary>
-    public RelayCommand AddClaimCommand { get; }
-
-    /// <summary>Gets the command that takes one claim back off the list.</summary>
-    public RelayCommand<LicenseClaimEntry> RemoveClaimCommand { get; }
 
     /// <summary>Gets the command that asks which private key to sign with.</summary>
     public AsyncRelayCommand BrowsePrivateKeyPathCommand { get; }
@@ -189,41 +171,6 @@ public sealed class GenerateLicenseViewModel : ObservableValidator
             }
         }
     }
-
-    /// <summary>Gets or sets the feature flag waiting to be added.</summary>
-    public string? NewFeature
-    {
-        get;
-        set
-        {
-            if (SetProperty(ref field, value))
-            {
-                AddFeatureCommand.NotifyCanExecuteChanged();
-            }
-        }
-    }
-
-    /// <summary>Gets or sets the name of the claim waiting to be added.</summary>
-    public string? NewClaimKey
-    {
-        get;
-        set
-        {
-            if (SetProperty(ref field, value))
-            {
-                AddClaimCommand.NotifyCanExecuteChanged();
-            }
-        }
-    }
-
-    /// <summary>Gets or sets the value of the claim waiting to be added.</summary>
-    public string? NewClaimValue { get; set => SetProperty(ref field, value); }
-
-    /// <summary>Gets the feature flags the licence will grant.</summary>
-    public ObservableCollection<string> Features { get; } = [];
-
-    /// <summary>Gets the key/value claims the licence will carry.</summary>
-    public ObservableCollection<LicenseClaimEntry> Claims { get; } = [];
 
     /// <summary>Gets or sets the private key file the licence is signed with.</summary>
     public string? PrivateKeyPath
@@ -346,51 +293,6 @@ public sealed class GenerateLicenseViewModel : ObservableValidator
     }
 
     private void OnUseThisMachine() => DeviceId = DeviceIdentifier.Generate();
-
-    private bool CanAddFeature() => Trimmed(NewFeature) is string feature && !Features.Contains(feature);
-
-    private void OnAddFeature()
-    {
-        // Ordinal, because that is how the library compares a feature flag — Features.Contains uses the
-        // default string comparer, which is ordinal.
-        if (Trimmed(NewFeature) is not string feature || Features.Contains(feature))
-        {
-            return;
-        }
-
-        Features.Add(feature);
-        NewFeature = null;
-    }
-
-    private void OnRemoveFeature(string? feature)
-    {
-        if (feature is not null)
-        {
-            Features.Remove(feature);
-        }
-    }
-
-    private bool CanAddClaim() => Trimmed(NewClaimKey) is string key && !HasClaim(key);
-
-    private void OnAddClaim()
-    {
-        if (Trimmed(NewClaimKey) is not string key || HasClaim(key))
-        {
-            return;
-        }
-
-        Claims.Add(new LicenseClaimEntry(key, NewClaimValue?.Trim() ?? string.Empty));
-        NewClaimKey = null;
-        NewClaimValue = null;
-    }
-
-    private void OnRemoveClaim(LicenseClaimEntry? claim)
-    {
-        if (claim is not null)
-        {
-            Claims.Remove(claim);
-        }
-    }
 
     private async Task OnBrowsePrivateKeyPathAsync()
     {
@@ -572,8 +474,6 @@ public sealed class GenerateLicenseViewModel : ObservableValidator
         DeviceId = Trimmed(DeviceId),
         ValidFrom = StartOfDay(ValidFromDate),
         ValidUntil = EndOfDay(ValidUntilDate),
-        Features = Features.Count == 0 ? null : [.. Features],
-        Claims = Claims.Count == 0 ? null : ClaimsSnapshot(),
     };
 
     /// <summary>Turns the form into the profile that is written to disk.</summary>
@@ -585,8 +485,6 @@ public sealed class GenerateLicenseViewModel : ObservableValidator
         DeviceId = Trimmed(DeviceId),
         ValidFrom = ToDateOnly(ValidFromDate),
         ValidUntil = ToDateOnly(ValidUntilDate),
-        Features = [.. Features],
-        Claims = ClaimsSnapshot(),
         PrivateKeyPath = Trimmed(PrivateKeyPath),
 
         // No password, and no output path: the first must never be written down, and the second belongs to
@@ -595,10 +493,6 @@ public sealed class GenerateLicenseViewModel : ObservableValidator
 
     /// <summary>Fills the form from a loaded profile.</summary>
     /// <param name="profile">The profile to read.</param>
-    /// <remarks>
-    /// Defensive throughout, because a profile is a small JSON file somebody may well have edited by hand: a
-    /// blank feature or a repeated claim key is dropped rather than carried into the licence.
-    /// </remarks>
     private void ApplyProfile(LicenseProfile profile)
     {
         ProductId = profile.ProductId;
@@ -611,54 +505,6 @@ public sealed class GenerateLicenseViewModel : ObservableValidator
         // The profile just named a key — possibly a different one. A password typed for the previous key is
         // no longer the password for anything, so it goes.
         PrivateKeyPassword = null;
-
-        Features.Clear();
-
-        foreach (string feature in profile.Features)
-        {
-            if (Trimmed(feature) is string trimmed && !Features.Contains(trimmed))
-            {
-                Features.Add(trimmed);
-            }
-        }
-
-        Claims.Clear();
-
-        foreach (KeyValuePair<string, string> claim in profile.Claims)
-        {
-            if (Trimmed(claim.Key) is string key && !HasClaim(key))
-            {
-                Claims.Add(new LicenseClaimEntry(key, claim.Value ?? string.Empty));
-            }
-        }
-    }
-
-    private bool HasClaim(string key)
-    {
-        foreach (LicenseClaimEntry claim in Claims)
-        {
-            if (string.Equals(claim.Key, key, StringComparison.Ordinal))
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private Dictionary<string, string> ClaimsSnapshot()
-    {
-        Dictionary<string, string> claims = new(Claims.Count, StringComparer.Ordinal);
-
-        foreach (LicenseClaimEntry claim in Claims)
-        {
-            // The indexer rather than Add: adding is what would throw, and a page that crashed over its own
-            // list would be a worse answer than the last row winning. Nothing can put a duplicate here —
-            // LicenseClaimEntry is immutable and the add command refuses one — so this is a belt for a brace.
-            claims[claim.Key] = claim.Value;
-        }
-
-        return claims;
     }
 
     /// <summary>Offers a file name derived from the product identifier.</summary>

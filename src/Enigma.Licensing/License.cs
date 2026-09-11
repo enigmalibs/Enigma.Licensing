@@ -1,6 +1,4 @@
 using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
 
 namespace Enigma.Licensing;
 
@@ -30,12 +28,6 @@ namespace Enigma.Licensing;
 /// </remarks>
 public sealed record License
 {
-    private static readonly IReadOnlyDictionary<string, string> EmptyClaims =
-        new ReadOnlyDictionary<string, string>(new Dictionary<string, string>(0));
-
-    private readonly IReadOnlyCollection<string> _features = Array.Empty<string>();
-    private readonly IReadOnlyDictionary<string, string> _claims = EmptyClaims;
-
     /// <summary>
     /// The license's unique identifier. Issued as a ULID by the generator — lexicographically
     /// sortable by creation time — but any non-empty string a caller supplies is accepted and stored
@@ -86,57 +78,4 @@ public sealed record License
     /// Who the license was issued to. Purely descriptive — validation never looks at it.
     /// </summary>
     public string? Owner { get; init; }
-
-    /// <summary>
-    /// The feature flags this license unlocks; empty when the license grants no optional features.
-    /// Query it with <see cref="HasFeature"/> rather than comparing strings yourself.
-    /// </summary>
-    /// <remarks>
-    /// Never <see langword="null"/>: assigning <see langword="null"/> — which is what a payload
-    /// containing <c>"features": null</c> does — stores an empty collection instead, so calling code
-    /// downstream of an untrusted document cannot be handed a null here.
-    /// </remarks>
-    public IReadOnlyCollection<string> Features
-    {
-        get => _features;
-        init => _features = value ?? Array.Empty<string>();
-    }
-
-    /// <summary>
-    /// Arbitrary additional key/value data carried by the license — seat counts, tier names, customer
-    /// references. Empty when the license carries none. Validation ignores these entirely; they exist
-    /// for the application to read after a license validates.
-    /// </summary>
-    /// <remarks>
-    /// Never <see langword="null"/>, for the same reason as <see cref="Features"/>.
-    /// </remarks>
-    public IReadOnlyDictionary<string, string> Claims
-    {
-        get => _claims;
-        init => _claims = value ?? EmptyClaims;
-    }
-
-    /// <summary>
-    /// Determines whether this license grants <paramref name="feature"/>.
-    /// </summary>
-    /// <param name="feature">The feature flag to look for. Compared with ordinal, case-sensitive equality.</param>
-    /// <returns><see langword="true"/> when <see cref="Features"/> contains the flag.</returns>
-    /// <exception cref="ArgumentNullException"><paramref name="feature"/> is <see langword="null"/>.</exception>
-    public bool HasFeature(string feature)
-    {
-        if (feature is null)
-        {
-            throw new ArgumentNullException(nameof(feature));
-        }
-
-        foreach (string candidate in _features)
-        {
-            if (string.Equals(candidate, feature, StringComparison.Ordinal))
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
 }

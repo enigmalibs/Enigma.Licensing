@@ -18,25 +18,28 @@
     <IsAotCompatible Condition="'$(TargetFramework)' != 'netstandard2.0'">true</IsAotCompatible>
   </PropertyGroup>
   <!-- NuGet packaging metadata (FEATURE-57BC-PHASE01). Deliberately absent until release time, per the
-       house release workflow; this is that release. The version lives here rather than in
-       Directory.Build.props because the library and the desktop app version independently. -->
+       house release workflow. The version lives here rather than in Directory.Build.props because the
+       library and the desktop app version independently; FEATURE-82E5 took it to 2.0.0, a major bump
+       because five public members were removed from the published 1.0.0. Keep <PackageReleaseNotes>
+       and RELEASENOTES.md in step — the notes below mirror that file's top section. -->
   <PropertyGroup>
     <PackageId>Enigma.Licensing</PackageId>
-    <Version>1.0.0</Version>
+    <Version>2.0.0</Version>
     <Title>Enigma.Licensing — .NET License Generation &amp; Validation</Title>
-    <Description>Generate, sign and validate software licenses in .NET. Licenses are signed JSON envelopes (enigma-license/1) whose signature covers the stored payload bytes exactly — there is no canonicalization step to get wrong — and they can be signed with classical RSA (SHA-256/384/512) or post-quantum ML-DSA (FIPS 204, parameter sets 44/65/87). Key pairs are generated, stored and optionally password-encrypted (Argon2id + AES-256-GCM) in a single enigma-key/1 format. A license carries feature flags, arbitrary claims, an optional validity window and an optional device binding; validation is a verdict rather than an exception, reports the first failing check, and supports anchored wildcard product identifiers. All cryptography comes from Enigma.Core.</Description>
+    <Description>Generate, sign and validate software licenses in .NET. Licenses are signed JSON envelopes (enigma-license/1) whose signature covers the stored payload bytes exactly — there is no canonicalization step to get wrong — and they can be signed with classical RSA (SHA-256/384/512) or post-quantum ML-DSA (FIPS 204, parameter sets 44/65/87). Key pairs are generated, stored and optionally password-encrypted (Argon2id + AES-256-GCM) in a single enigma-key/1 format. A license carries a product identifier, an owner, an optional validity window and an optional device binding; validation is a verdict rather than an exception, reports the first failing check, and supports anchored wildcard product identifiers. All cryptography comes from Enigma.Core.</Description>
     <PackageTags>license licensing signature rsa ml-dsa fips-204 post-quantum dotnet</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageLicenseFile>LICENSE.md</PackageLicenseFile>
     <RepositoryUrl>https://github.com/enigmalibs/Enigma.Licensing</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageProjectUrl>https://github.com/enigmalibs/Enigma.Licensing</PackageProjectUrl>
-    <!-- Written in FEATURE-57BC-PHASE03 alongside RELEASENOTES.md itself, so the two cannot disagree:
-         this is a prose summary of that file's v1.0.0 section and ends by pointing at it. There are
+    <!-- Written alongside RELEASENOTES.md itself, so the two cannot disagree: this is a prose summary
+         of that file's top section, and for a breaking release it ends by pointing at the migration
+         guide as well. Rewritten whole on every release, never appended to. There are
          deliberately no symbol properties (IncludeSymbols / SymbolPackageFormat / PublishRepositoryUrl /
          EmbedUntrackedSources) and no GeneratePackageOnBuild: a release ships one .nupkg, packed
          explicitly by the release step rather than by every local build. -->
-    <PackageReleaseNotes>First public release. Generates and validates signed software licenses: enigma-license/1 envelopes whose signature covers the stored payload bytes exactly, with no canonicalization step; enigma-key/1 key files covering both algorithm families and both halves of a pair, with optional Argon2id + AES-256-GCM encryption of the private half; and six signature schemes — RSA with SHA-256/384/512 and post-quantum ML-DSA-44/65/87 (FIPS 204). A license carries feature flags, arbitrary claims, an optional validity window and an optional device binding. Validation returns a verdict rather than throwing, reports the first failing check of eight, and supports anchored wildcard product identifiers. Serialization is source-generated, so the library is trim- and AOT-safe. A clean break from Enigma.LicenseManager: its licenses and keys are deliberately not readable here. See RELEASENOTES.md for the full details.</PackageReleaseNotes>
+    <PackageReleaseNotes>Breaking release. Feature flags and claims are removed: License.Features, License.Claims, License.HasFeature, LicenseRequest.Features and LicenseRequest.Claims are deleted outright — validation never read them, so they were signed, shown and documented with nothing ever deciding from them. Nothing else moved: both document formats are byte-identical, all six signature schemes behave as before, the check order and its seven failure reasons are unchanged, the error contract is unchanged, and the target frameworks are unchanged. Every licence issued by 1.0.0 still validates, and no file needs reissuing or converting — a payload member this build does not know is ignored rather than rejected, and nothing re-serializes a licence in order to check one. The break is therefore a compile error with no runtime component. System.Text.Json moves 10.0.10 to 10.0.12 on netstandard2.0 only. See docs/migrations/1.0.0-to-2.0.0.md for the migration, and RELEASENOTES.md for the full details.</PackageReleaseNotes>
   </PropertyGroup>
   <!-- What actually puts the two files in the package — PackageReadmeFile and PackageLicenseFile only
        name them. Both live at the repository root, two levels above this project. -->
@@ -47,12 +50,13 @@
   <!-- LangVersion / Nullable / ImplicitUsings / TreatWarningsAsErrors are deliberately absent:
        they come from Directory.Build.props and must never be repeated per-project. No Version
        attributes either — versions live in Directory.Packages.props (CPM). -->
-  <!-- Enigma.Core 1.1.0 — the cryptographic engine behind every service here: RSA and ML-DSA key
+  <!-- Enigma.Core 2.0.0 — the cryptographic engine behind every service here: RSA and ML-DSA key
        generation and signing, Argon2id key derivation, AES-256-GCM, SHA-256 and hex encoding. It
-       multi-targets the same three TFMs, so the reference is unconditional. It is an implementation
-       detail: no Enigma.Core.* or Org.BouncyCastle.* type may reach this library's public surface —
-       guarded by PublicSurfaceIsolationTests, which walks the exported surface by reflection and also
-       rejects types from Ulid and DeviceId. -->
+       multi-targets the same three TFMs, so the reference is unconditional. Its RSA surface takes a
+       parsed RsaKey handle rather than PEM text, which LicensingKey imports once per key and holds.
+       It is an implementation detail: no Enigma.Core.* or Org.BouncyCastle.* type may reach this
+       library's public surface — guarded by PublicSurfaceIsolationTests, which walks the exported
+       surface by reflection and also rejects types from Ulid and DeviceId. -->
   <!-- Ulid: the identifier the generator issues when a LicenseRequest carries none. DeviceId: the
        machine-name + OS-version components behind DeviceIdentifier.Generate(). Both multi-target all
        three of our TFMs, so both references are unconditional; both are MIT. Like Enigma.Core they are

@@ -1,4 +1,6 @@
 using System.Text;
+using System.Threading;
+using Enigma.Core.Asymmetric.PublicKey;
 
 namespace Enigma.Licensing.Keys;
 
@@ -52,6 +54,10 @@ public sealed class LicensingKey
 
     private readonly byte[] _material;
 
+    // The RSA members' material, parsed. Written at most once, by whichever thread reads RsaHandle
+    // first; null for the ML-DSA members, whose material is raw FIPS 204 bytes with no handle to hold.
+    private RsaKey? _rsaHandle;
+
     // Internal so the only way to obtain a key is through IKeyService — every instance has therefore
     // either just been generated or just come out of a parsed enigma-key/1 document.
     internal LicensingKey(KeyKind kind, LicenseSignatureAlgorithm algorithm, string keyId, byte[] material)
@@ -101,4 +107,53 @@ public sealed class LicensingKey
     /// PEM string; the ML-DSA members have no PEM form.
     /// </summary>
     internal string Pem => Encoding.UTF8.GetString(_material, 0, _material.Length);
+
+    /// <summary>
+    /// This key's material parsed into the handle every Enigma.Core RSA operation takes — imported
+    /// once, on first use, and reused from then on. Only meaningful for the RSA members.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>The parse is the expensive part of an RSA operation, not the arithmetic</b> — BouncyCastle
+    /// validates a private key's CRT components as it constructs it — which is why Enigma.Core hands
+    /// out a reusable handle rather than taking a PEM per call. A <see cref="LicensingKey"/> is one
+    /// key for its whole lifetime, so caching the handle here is what makes "parse once per key"
+    /// structural: signing a thousand licenses with one key parses its PEM once. Do not replace this
+    /// with an import at the call site.
+    /// </para>
+    /// <para>
+    /// Initialised without a lock: a handle is immutable and thread-safe, so two threads racing to
+    /// import the same material differ only in which identical handle they built, and the
+    /// <see cref="Interlocked.CompareExchange(ref object, object, object)"/> means one of them is kept
+    /// and every later reader sees it. That matters because <see cref="ILicenseStore"/> verifies
+    /// outside its lock, so one public key really is used from several threads at once.
+    /// </para>
+    /// </remarks>
+    /// <exception cref="System.ArgumentException">
+    /// The material is not a PEM document holding an RSA key of this <see cref="Kind"/>. Signing lets
+    /// that escape — a key the application ships is its own file, not untrusted input — while
+    /// verification treats it as one more reason a signature does not verify.
+    /// </exception>
+    /// <exception cref="System.Security.Cryptography.CryptographicException">
+    /// The material is a PEM that is itself password-encrypted. <see cref="IKeyService"/> rejects one
+    /// at load, so reaching this is a key that never went through the format.
+    /// </exception>
+    internal RsaKey RsaHandle
+    {
+        get
+        {
+            RsaKey? imported = Volatile.Read(ref _rsaHandle);
+
+            if (imported is not null)
+            {
+                return imported;
+            }
+
+            RsaKey parsed = Kind == KeyKind.Public
+                ? RsaKey.ImportPublicKeyPem(Pem)
+                : RsaKey.ImportPrivateKeyPem(Pem);
+
+            return Interlocked.CompareExchange(ref _rsaHandle, parsed, null) ?? parsed;
+        }
+    }
 }

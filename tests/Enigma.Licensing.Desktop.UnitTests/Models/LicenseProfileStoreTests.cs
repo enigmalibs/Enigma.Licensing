@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -38,8 +37,6 @@ public sealed class LicenseProfileStoreTests : IDisposable
             DeviceId = "9E3F0A",
             ValidFrom = new DateOnly(2026, 1, 1),
             ValidUntil = new DateOnly(2026, 12, 31),
-            Features = ["pro", "export"],
-            Claims = new Dictionary<string, string>(StringComparer.Ordinal) { ["seats"] = "25" },
             PrivateKeyPath = "/keys/acme.private.key.json",
         };
 
@@ -53,8 +50,6 @@ public sealed class LicenseProfileStoreTests : IDisposable
         Assert.Equal(profile.DeviceId, loaded.DeviceId);
         Assert.Equal(profile.ValidFrom, loaded.ValidFrom);
         Assert.Equal(profile.ValidUntil, loaded.ValidUntil);
-        Assert.Equal(["pro", "export"], loaded.Features);
-        Assert.Equal("25", Assert.Contains("seats", loaded.Claims));
         Assert.Equal(profile.PrivateKeyPath, loaded.PrivateKeyPath);
         Assert.Equal(LicenseProfile.CurrentFormatVersion, loaded.FormatVersion);
     }
@@ -171,18 +166,25 @@ public sealed class LicenseProfileStoreTests : IDisposable
     }
 
     /// <summary>
-    /// A hand-edited file may say <c>null</c> where a collection belongs. That reads as empty rather than
-    /// handing a null to the page that is about to enumerate it.
+    /// <b>A profile written by version 1.0 still loads.</b> Those files carry <c>features</c> and
+    /// <c>claims</c>, two fields the form no longer has, and the loader skips an unmapped member rather
+    /// than refusing the document — which is why <see cref="LicenseProfile.CurrentFormatVersion"/> did not
+    /// move when they went. Everything else in the file fills the form as it always did.
     /// </summary>
     [Fact]
-    public async Task NullCollections_ReadAsEmptyOnes()
+    public async Task AProfileFrom10_LoadsWithItsFeaturesAndClaimsIgnored()
     {
-        string path = await WriteAsync("{ \"features\": null, \"claims\": null }");
+        string path = await WriteAsync(
+            "{ \"formatVersion\": 1, \"productId\": \"Acme Suite\", \"owner\": \"Contoso Ltd\", " +
+            "\"validUntil\": \"2026-12-31\", \"features\": [\"pro\", \"export\"], " +
+            "\"claims\": { \"seats\": \"25\" }, \"privateKeyPath\": \"/keys/acme.private.key.json\" }");
 
         LicenseProfile loaded = await _store.LoadAsync(path, Token);
 
-        Assert.Empty(loaded.Features);
-        Assert.Empty(loaded.Claims);
+        Assert.Equal("Acme Suite", loaded.ProductId);
+        Assert.Equal("Contoso Ltd", loaded.Owner);
+        Assert.Equal(new DateOnly(2026, 12, 31), loaded.ValidUntil);
+        Assert.Equal("/keys/acme.private.key.json", loaded.PrivateKeyPath);
     }
 
     /// <summary>A missing file is an I/O failure, not a malformed profile — and it propagates untouched.</summary>

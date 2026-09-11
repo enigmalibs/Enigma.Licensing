@@ -50,9 +50,7 @@ Decoded, `payload` is a `License` — the only part of the document a signature 
   "deviceId": "9F2C4A…",
   "validFrom": "2026-08-07T00:00:00+02:00",
   "validUntil": "2027-08-07T00:00:00+02:00",
-  "owner": "Acme GmbH",
-  "features": ["export-pdf", "team-sync"],
-  "claims": { "seats": "25", "tier": "enterprise" }
+  "owner": "Acme GmbH"
 }
 ```
 
@@ -60,6 +58,11 @@ Decoded, `payload` is a `License` — the only part of the document a signature 
 absent field and an explicit `null` mean the same thing. Dates are ISO-8601 with an explicit offset,
 so a license issued in one time zone means the same instant everywhere. See
 [Generating licenses](generating-licenses.md) for what each field does.
+
+**A payload member this library does not know is ignored, not rejected.** That is what keeps a
+license issued by 1.0 — whose payload carries `features` and `claims`, two fields 2.0 removed —
+valid under 2.0: nothing re-serializes a license in order to check one, so the signature still covers
+exactly the bytes it was made over, and the unknown members simply do not surface on `License`.
 
 ## Algorithm identifiers
 
@@ -176,8 +179,8 @@ else
 **The result is unverified: safe to display, unsafe to act on.** It says what the document *claims*,
 not whether the claim is authentic — exactly like `LicenseValidationResult.License` on a failed
 result, and for the same reason. Use it to name a license you just issued, to show a support
-engineer what a customer's file contains, or to fill in a form. Never to decide that a feature is
-unlocked.
+engineer what a customer's file contains, or to fill in a form. Never to decide that a licence is
+valid.
 
 ### Writing a document
 

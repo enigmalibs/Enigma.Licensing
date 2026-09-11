@@ -62,8 +62,6 @@ public sealed class LicenseGeneratorTests(SignedLicenseFixture keys)
             DeviceId = "DESKTOP-ABC123",
             ValidFrom = LicenseTestData.ValidFrom,
             ValidUntil = LicenseTestData.ValidUntil,
-            Features = ["export", "sync"],
-            Claims = new Dictionary<string, string> { ["seats"] = "25" },
         };
 
         License license = LicensePayload.Deserialize(
@@ -74,8 +72,6 @@ public sealed class LicenseGeneratorTests(SignedLicenseFixture keys)
         Assert.Equal("DESKTOP-ABC123", license.DeviceId);
         Assert.Equal(LicenseTestData.ValidFrom, license.ValidFrom);
         Assert.Equal(LicenseTestData.ValidUntil, license.ValidUntil);
-        Assert.Equal(["export", "sync"], license.Features);
-        Assert.Equal("25", license.Claims["seats"]);
     }
 
     /// <summary>A ULID: 26 characters of Crockford base32, and sortable by the instant it was minted.</summary>
@@ -135,20 +131,6 @@ public sealed class LicenseGeneratorTests(SignedLicenseFixture keys)
             _generator.Generate(request, keys.Rsa.PrivateKey).Payload);
 
         Assert.Equal(LicenseTestData.CreatedAt, license.CreatedAt);
-    }
-
-    /// <summary>
-    /// A request may leave both collections null; the license may not, so the omission is normalized
-    /// once here rather than by every consumer of a validated license.
-    /// </summary>
-    [Fact]
-    public void Generate_NormalizesAbsentFeaturesAndClaims()
-    {
-        License license = LicensePayload.Deserialize(
-            _generator.Generate(SignedLicenseTestData.Request(), keys.Rsa.PrivateKey).Payload);
-
-        Assert.Empty(license.Features);
-        Assert.Empty(license.Claims);
     }
 
     /// <summary>

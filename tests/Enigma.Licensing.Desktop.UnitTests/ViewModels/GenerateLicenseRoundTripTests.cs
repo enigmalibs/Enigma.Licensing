@@ -66,11 +66,7 @@ public sealed class GenerateLicenseRoundTripTests : IDisposable
         GenerateLicenseViewModel viewModel = Build();
         viewModel.ProductId = "Acme Suite 2.*";
         viewModel.Owner = "Contoso Ltd";
-        viewModel.NewFeature = "pro";
-        viewModel.AddFeatureCommand.Execute(null);
-        viewModel.NewClaimKey = "seats";
-        viewModel.NewClaimValue = "25";
-        viewModel.AddClaimCommand.Execute(null);
+        viewModel.DeviceId = "9E3F0A";
 
         await viewModel.GenerateLicenseCommand.ExecuteAsync(null);
 
@@ -86,8 +82,7 @@ public sealed class GenerateLicenseRoundTripTests : IDisposable
         License license = Assert.IsType<License>(result.License);
         Assert.Equal("Acme Suite 2.*", license.ProductId);
         Assert.Equal("Contoso Ltd", license.Owner);
-        Assert.True(license.HasFeature("pro"));
-        Assert.Equal("25", Assert.Contains("seats", license.Claims));
+        Assert.Equal("9E3F0A", license.DeviceId);
 
         // The identifier the page reported is the identifier inside the signed bytes.
         Assert.Equal(license.Id, viewModel.LastLicenseId);
@@ -265,11 +260,7 @@ public sealed class GenerateLicenseRoundTripTests : IDisposable
         first.ProductId = "Acme Suite 2.*";
         first.Owner = "Contoso Ltd";
         first.ValidUntilDate = DateTime.Today.AddYears(1);
-        first.NewFeature = "pro";
-        first.AddFeatureCommand.Execute(null);
-        first.NewClaimKey = "seats";
-        first.NewClaimValue = "25";
-        first.AddClaimCommand.Execute(null);
+        first.DeviceId = "9E3F0A";
         _files.Answer(profilePath);
 
         await first.SaveProfileCommand.ExecuteAsync(null);
@@ -283,7 +274,7 @@ public sealed class GenerateLicenseRoundTripTests : IDisposable
         Assert.Equal("Acme Suite 2.*", second.ProductId);
         Assert.Equal("Contoso Ltd", second.Owner);
         Assert.Equal(DateTime.Today.AddYears(1), second.ValidUntilDate);
-        Assert.Equal(["pro"], second.Features);
+        Assert.Equal("9E3F0A", second.DeviceId);
         Assert.Equal(_privateKeyPath, second.PrivateKeyPath);
 
         second.OutputPath = _licensePath;
@@ -296,8 +287,7 @@ public sealed class GenerateLicenseRoundTripTests : IDisposable
 
         License license = Assert.IsType<License>(result.License);
         Assert.Equal("Contoso Ltd", license.Owner);
-        Assert.True(license.HasFeature("pro"));
-        Assert.Equal("25", Assert.Contains("seats", license.Claims));
+        Assert.Equal("9E3F0A", license.DeviceId);
     }
 
     /// <summary>Generates a real pair and writes both halves, optionally encrypting the private one.</summary>
