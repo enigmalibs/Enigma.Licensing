@@ -34,8 +34,6 @@ truncated license behind.
 | `DeviceId` | `string?` | Lock the license to one machine. See [Device identity](device-identity.md). |
 | `ValidFrom` | `DateTimeOffset?` | First instant it is usable. `null` means immediately. |
 | `ValidUntil` | `DateTimeOffset?` | First instant it is **no longer** usable. `null` means perpetual. |
-| `Features` | `IReadOnlyCollection<string>?` | Feature flags the license unlocks. |
-| `Claims` | `IReadOnlyDictionary<string, string>?` | Arbitrary key/value data — seat counts, tiers, customer references. |
 | `Id` | `string?` | Supply one to reproduce a specific license; omit for a fresh ULID. |
 | `CreatedAt` | `DateTimeOffset?` | Supply one to reproduce a specific license; omit for `DateTimeOffset.UtcNow`. |
 
@@ -134,43 +132,6 @@ and exists nowhere but inside the signed bytes. It returns `null` only for a pay
 readable license, which cannot happen for an envelope this call just produced — but a license on
 disk that you cannot name is still a license on disk, so treat a `null` as a naming problem rather
 than a failed issue.
-
-### Features and claims
-
-```csharp
-using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
-using Enigma.Licensing;
-using Enigma.Licensing.Keys;
-
-var keyService = new KeyService();
-var generator = new LicenseGenerator();
-
-LicensingKey privateKey = await keyService.LoadKeyAsync("keys/signing.private.key.json");
-
-var request = new LicenseRequest
-{
-    ProductId = "MyApp 2.0",
-    Owner = "Acme GmbH",
-    Features = new[] { "export-pdf", "team-sync" },
-    Claims = new Dictionary<string, string>
-    {
-        ["seats"] = "25",
-        ["tier"] = "enterprise",
-    },
-};
-
-LicenseEnvelope envelope = generator.Generate(request, privateKey);
-License license = envelope.ReadLicense()!;
-
-Console.WriteLine(license.HasFeature("team-sync"));       // True
-Console.WriteLine(license.Claims["seats"]);               // 25
-```
-
-Features are compared **ordinally and case-sensitively** by `HasFeature`, so pick a spelling
-convention and keep to it. Claims are opaque to the library — validation ignores them entirely; they
-exist for the application to read once a license has validated.
 
 ### A validity window
 

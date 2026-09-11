@@ -12,9 +12,9 @@ application, and ask the validator for a verdict. Signing is classical RSA or po
 and all cryptography comes from [Enigma.Core](https://www.nuget.org/packages/Enigma.Core) — whose
 types never reach this library's public surface.
 
-> **What's new in 1.0** — the first release: signed `enigma-license/1` envelopes, `enigma-key/1` key
-> files, six signature schemes, and a validator that returns a verdict instead of throwing. See
-> [RELEASENOTES.md](RELEASENOTES.md).
+> **What's new in 2.0** — a breaking release: feature flags and claims are removed, since validation
+> never read them. Every license issued by 1.0 still validates, and no key or license file changes.
+> See [RELEASENOTES.md](RELEASENOTES.md).
 
 ## Features
 
@@ -31,9 +31,9 @@ types never reach this library's public surface.
   the envelope's own `algorithm` field, so rewriting it makes the signature fail rather than
   downgrade.
 - **Generating licenses** — `ILicenseGenerator` signs a `LicenseRequest` carrying a product
-  identifier, an owner, feature flags, arbitrary string claims, an optional validity window and an
-  optional device binding. Identifier and creation time are defaulted per call; the one-call path
-  overload loads the key, signs and writes the file.
+  identifier, an owner, an optional validity window and an optional device binding. Identifier and
+  creation time are defaulted per call; the one-call path overload loads the key, signs and writes
+  the file.
 - **Validating licenses** — `ILicenseValidator` runs a fixed, documented check order and reports the
   **first** failing step as one of seven `LicenseFailure` reasons, so an expired license and a forged
   one are never confused. Nothing a license can be makes it throw. Product identifiers may carry an
@@ -99,6 +99,9 @@ copy-pasteable C# samples verified against the public API — live under `docs/g
 repository, indexed by `docs/guides/README.md`. They cover the license format, keys, generating
 licenses, validating licenses, and device identity. Every public member also carries XML
 documentation, which ships inside the package.
+
+Upgrading from 1.0? `docs/migrations/1.0.0-to-2.0.0.md` in the repository says what breaks, what
+deliberately does not, and why no existing license needs reissuing.
 
 ## Desktop application
 

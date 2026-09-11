@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 
 namespace Enigma.Licensing;
 
@@ -47,19 +46,6 @@ public sealed record LicenseRequest
     /// When the license stops being usable, or <see langword="null"/> for a perpetual license.
     /// </summary>
     public DateTimeOffset? ValidUntil { get; init; }
-
-    /// <summary>
-    /// The feature flags to grant, or <see langword="null"/> for none. Unlike
-    /// <see cref="License.Features"/> this may be <see langword="null"/>: the generator normalizes it
-    /// to an empty collection on the license it produces.
-    /// </summary>
-    public IReadOnlyCollection<string>? Features { get; init; }
-
-    /// <summary>
-    /// Additional key/value data to carry, or <see langword="null"/> for none. Normalized to an empty
-    /// dictionary on the generated license, as <see cref="Features"/> is.
-    /// </summary>
-    public IReadOnlyDictionary<string, string>? Claims { get; init; }
 
     /// <summary>
     /// The identifier to give the license. Leave <see langword="null"/> — the normal case — and the

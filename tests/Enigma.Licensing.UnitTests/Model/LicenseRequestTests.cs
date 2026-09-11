@@ -19,22 +19,6 @@ public sealed class LicenseRequestTests
         Assert.Null(request.DeviceId);
         Assert.Null(request.ValidFrom);
         Assert.Null(request.ValidUntil);
-        Assert.Null(request.Features);
-        Assert.Null(request.Claims);
-    }
-
-    /// <summary>
-    /// The collections are nullable here and non-nullable on <see cref="License"/>: an unset request
-    /// field means "the generator decides", whereas an unset license field is an empty grant. Nothing
-    /// should quietly normalize the request itself.
-    /// </summary>
-    [Fact]
-    public void UnsetCollections_StayNullRatherThanBecomingEmpty()
-    {
-        LicenseRequest request = new() { ProductId = "MyApp" };
-
-        Assert.Null(request.Features);
-        Assert.Null(request.Claims);
     }
 
     [Fact]

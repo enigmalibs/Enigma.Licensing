@@ -15,9 +15,10 @@
   <!-- System.Buffers (Span/Memory), System.Text.Json and PolySharp (compile-only C# polyfills) are
        the netstandard2.0-support set and are referenced ONLY under that TFM in the library csproj:
        net8.0/net10.0 get System.Text.Json from the shared framework, and referencing the package
-       there would raise NU1510 and fail the zero-warnings build. 10.0.10 is the version whose own
+       there would raise NU1510 and fail the zero-warnings build. The 10.0.x line is the one whose own
        netstandard2.0 dependency set already matches the System.Buffers 4.6.1 pinned here — which is
-       also the version Enigma.Core's own netstandard2.0 dependency group asks for. -->
+       also the version Enigma.Core's own netstandard2.0 dependency group asks for; FEATURE-82E5 took
+       the 10.0.10 → 10.0.12 servicing patch, which moves nothing else in the graph. -->
   <!-- Ulid 1.4.1 (MIT) mints the identifier the generator stamps on a license when the caller supplies
        none: lexicographically sortable by creation time, unlike a GUID, so a directory listing of
        issued licenses is in issue order. On netstandard2.0 it asks for System.Memory and
@@ -38,7 +39,7 @@
     <PackageVersion Include="Enigma.Core" Version="2.0.0" />
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.18" />
     <PackageVersion Include="System.Buffers" Version="4.6.1" />
-    <PackageVersion Include="System.Text.Json" Version="10.0.10" />
+    <PackageVersion Include="System.Text.Json" Version="10.0.12" />
     <PackageVersion Include="PolySharp" Version="1.16.0" />
     <PackageVersion Include="Ulid" Version="1.4.1" />
     <PackageVersion Include="DeviceId" Version="6.11.0" />
@@ -49,9 +50,9 @@
        terminal launch, Debug for an attached debugger. The app writes no log files (validated decision),
        so no file sink is pinned. -->
   <ItemGroup>
-    <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.10" />
-    <PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="10.0.10" />
-    <PackageVersion Include="Microsoft.Extensions.Logging.Debug" Version="10.0.10" />
+    <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.12" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="10.0.12" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Debug" Version="10.0.12" />
   </ItemGroup>
   <!-- Desktop (Avalonia) — a version-coupled ecosystem: Avalonia, the Fluent theme, the Inter fonts and
        the diagnostics support are bumped TOGETHER, never one package at a time, because mixing versions

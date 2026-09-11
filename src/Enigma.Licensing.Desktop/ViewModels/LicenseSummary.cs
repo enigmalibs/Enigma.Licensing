@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Globalization;
 
 namespace Enigma.Licensing.Desktop.ViewModels;
@@ -9,12 +8,9 @@ namespace Enigma.Licensing.Desktop.ViewModels;
 /// </summary>
 /// <remarks>
 /// <para>
-/// A projection rather than a binding straight onto <see cref="License"/>, for three reasons the view cannot
-/// solve on its own: the dates are instants that have to be formatted, the optional fields need words for
-/// being absent rather than an empty row, and <see cref="License.Claims"/> is a dictionary — which a compiled
-/// binding cannot template without naming a constructed generic type in XAML. Projecting it into the
-/// <see cref="LicenseClaimEntry"/> the generate page already uses costs one loop and keeps both pages on one
-/// row type.
+/// A projection rather than a binding straight onto <see cref="License"/>, for two reasons the view cannot
+/// solve on its own: the dates are instants that have to be formatted, and the optional fields need words
+/// for being absent rather than an empty row.
 /// </para>
 /// <para>
 /// <b>The licence this describes may be unverified.</b> The validator fills
@@ -49,8 +45,6 @@ public sealed class LicenseSummary
         CreatedAt = Instant(license.CreatedAt);
         ValidFrom = license.ValidFrom is { } from ? Instant(from) : "Immediately";
         ValidUntil = license.ValidUntil is { } until ? Instant(until) : "Never expires";
-        Features = [.. license.Features];
-        Claims = BuildClaims(license.Claims);
     }
 
     /// <summary>Gets the licence's identifier — a ULID when this library issued it.</summary>
@@ -74,39 +68,9 @@ public sealed class LicenseSummary
     /// <summary>Gets the instant the licence stops being usable, or the words for a perpetual one.</summary>
     public string ValidUntil { get; }
 
-    /// <summary>Gets the feature flags the licence grants, in the order it carries them.</summary>
-    public IReadOnlyList<string> Features { get; }
-
-    /// <summary>Gets the licence's claims, ordered by name.</summary>
-    /// <remarks>
-    /// Ordered because the payload's own order is whatever the dictionary happened to enumerate in, which is
-    /// not something a reader should see change between two licences that say the same thing.
-    /// </remarks>
-    public IReadOnlyList<LicenseClaimEntry> Claims { get; }
-
-    /// <summary>Gets a value indicating whether the licence grants any feature at all.</summary>
-    public bool HasFeatures => Features.Count > 0;
-
-    /// <summary>Gets a value indicating whether the licence carries any claim at all.</summary>
-    public bool HasClaims => Claims.Count > 0;
-
     private static string Instant(DateTimeOffset value) =>
         value.ToLocalTime().ToString(InstantFormat, CultureInfo.InvariantCulture);
 
     private static string Stated(string? value, string absent) =>
         string.IsNullOrWhiteSpace(value) ? absent : value;
-
-    private static IReadOnlyList<LicenseClaimEntry> BuildClaims(IReadOnlyDictionary<string, string> claims)
-    {
-        List<LicenseClaimEntry> entries = new(claims.Count);
-
-        foreach (KeyValuePair<string, string> claim in claims)
-        {
-            entries.Add(new LicenseClaimEntry(claim.Key, claim.Value));
-        }
-
-        entries.Sort(static (left, right) => string.CompareOrdinal(left.Key, right.Key));
-
-        return entries;
-    }
 }

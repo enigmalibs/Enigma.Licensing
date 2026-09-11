@@ -2,7 +2,6 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             xmlns:sys="using:System"
              xmlns:controls="using:Enigma.Avalonia.Desktop.Controls"
              xmlns:editors="using:Enigma.Avalonia.Desktop.Controls.Editors"
              xmlns:ei="https://github.com/josueclement/Enigma.Icons"
@@ -94,92 +93,6 @@
                      Foreground="{DynamicResource EnigmaErrorBrush}"
                      IsVisible="{Binding HasWindowError}"
                      Text="{Binding WindowErrorMessage}" />
-
-        </StackPanel>
-      </controls:SettingsCardExpander>
-
-      <controls:SettingsCardExpander Header="Features"
-                                     Description="The optional feature flags this licence unlocks."
-                                     IconData="{ei:IconGeometry ListChecks}">
-        <StackPanel Spacing="12">
-
-          <editors:TextEditor Title="Add a feature"
-                              Text="{Binding NewFeature}"
-                              PlaceholderText="A flag the application will ask about…">
-            <editors:TextEditor.ActionContent>
-              <Button Content="Add"
-                      Command="{Binding AddFeatureCommand}"
-                      Padding="6,2"
-                      FontSize="12" />
-            </editors:TextEditor.ActionContent>
-          </editors:TextEditor>
-
-          <ItemsControl ItemsSource="{Binding Features}">
-            <ItemsControl.ItemTemplate>
-              <DataTemplate x:DataType="sys:String">
-                <Grid ColumnDefinitions="*,Auto" Margin="0,2">
-                  <SelectableTextBlock Classes="value mono" Text="{Binding}" VerticalAlignment="Center" />
-                  <Button Grid.Column="1"
-                          Padding="6,3"
-                          ToolTip.Tip="Remove this feature"
-                          Command="{Binding $parent[ItemsControl].((vm:GenerateLicenseViewModel)DataContext).RemoveFeatureCommand}"
-                          CommandParameter="{Binding}">
-                    <PathIcon Data="{ei:IconGeometry Trash}" Width="12" Height="12" />
-                  </Button>
-                </Grid>
-              </DataTemplate>
-            </ItemsControl.ItemTemplate>
-          </ItemsControl>
-
-          <TextBlock Classes="hint"
-                     Text="Flags are compared character for character by the application that reads the licence, so spelling one differently here grants a different feature." />
-
-        </StackPanel>
-      </controls:SettingsCardExpander>
-
-      <controls:SettingsCardExpander Header="Claims"
-                                     Description="Extra key/value data the licence carries — seat counts, tiers, references."
-                                     IconData="{ei:IconGeometry Rows}">
-        <StackPanel Spacing="12">
-
-          <Grid ColumnDefinitions="*,12,*">
-            <editors:TextEditor Title="Name" Text="{Binding NewClaimKey}" PlaceholderText="seats" />
-            <editors:TextEditor Grid.Column="2"
-                                Title="Value"
-                                Text="{Binding NewClaimValue}"
-                                PlaceholderText="25">
-              <editors:TextEditor.ActionContent>
-                <Button Content="Add"
-                        Command="{Binding AddClaimCommand}"
-                        Padding="6,2"
-                        FontSize="12" />
-              </editors:TextEditor.ActionContent>
-            </editors:TextEditor>
-          </Grid>
-
-          <ItemsControl ItemsSource="{Binding Claims}">
-            <ItemsControl.ItemTemplate>
-              <DataTemplate x:DataType="vm:LicenseClaimEntry">
-                <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,2">
-                  <SelectableTextBlock Classes="field mono" Text="{Binding Key}" VerticalAlignment="Center" />
-                  <SelectableTextBlock Grid.Column="1"
-                                       Classes="value"
-                                       Text="{Binding Value}"
-                                       VerticalAlignment="Center" />
-                  <Button Grid.Column="2"
-                          Padding="6,3"
-                          ToolTip.Tip="Remove this claim"
-                          Command="{Binding $parent[ItemsControl].((vm:GenerateLicenseViewModel)DataContext).RemoveClaimCommand}"
-                          CommandParameter="{Binding}">
-                    <PathIcon Data="{ei:IconGeometry Trash}" Width="12" Height="12" />
-                  </Button>
-                </Grid>
-              </DataTemplate>
-            </ItemsControl.ItemTemplate>
-          </ItemsControl>
-
-          <TextBlock Classes="hint"
-                     Text="Validation ignores claims entirely; they are there for the application to read once a licence has passed. A claim is replaced by removing it and adding it again, which is what keeps two rows from ever sharing a name." />
 
         </StackPanel>
       </controls:SettingsCardExpander>

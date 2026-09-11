@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 using Enigma.Licensing.Desktop.Models;
@@ -20,8 +19,8 @@ namespace Enigma.Licensing.Desktop.UnitTests.ViewModels;
 /// </para>
 /// <para>
 /// The failures worth catching are the ones that still look like a working page: a licence that quietly
-/// expires a day early, a claim the user typed and the licence does not carry, a password copy left in
-/// memory, an overlay that never comes down, and a profile that remembers a secret.
+/// expires a day early, a password copy left in memory, an overlay that never comes down, and a profile
+/// that remembers a secret.
 /// </para>
 /// </remarks>
 public sealed class GenerateLicenseViewModelTests
@@ -40,11 +39,6 @@ public sealed class GenerateLicenseViewModelTests
         viewModel.ProductId = "  Acme Suite 2.*  ";
         viewModel.Owner = "Contoso Ltd";
         viewModel.DeviceId = "9E3F0A";
-        viewModel.NewFeature = "pro";
-        viewModel.AddFeatureCommand.Execute(null);
-        viewModel.NewClaimKey = "seats";
-        viewModel.NewClaimValue = "25";
-        viewModel.AddClaimCommand.Execute(null);
 
         await viewModel.GenerateLicenseCommand.ExecuteAsync(null);
 
@@ -52,8 +46,6 @@ public sealed class GenerateLicenseViewModelTests
         Assert.Equal("Acme Suite 2.*", request.ProductId);
         Assert.Equal("Contoso Ltd", request.Owner);
         Assert.Equal("9E3F0A", request.DeviceId);
-        Assert.Equal(["pro"], request.Features);
-        Assert.Equal("25", Assert.Contains("seats", request.Claims!));
         Assert.Equal("/keys/acme.private.key.json", _generator.PrivateKeyPath);
         Assert.Equal("/licences/acme.license.json", _generator.OutputPath);
 
@@ -83,8 +75,6 @@ public sealed class GenerateLicenseViewModelTests
         Assert.Null(request.DeviceId);
         Assert.Null(request.ValidFrom);
         Assert.Null(request.ValidUntil);
-        Assert.Null(request.Features);
-        Assert.Null(request.Claims);
     }
 
     /// <summary>
@@ -376,8 +366,7 @@ public sealed class GenerateLicenseViewModelTests
         TaskCompletionSource release = new(TaskCreationOptions.RunContinuationsAsynchronously);
         GenerateLicenseViewModel viewModel = Ready();
         viewModel.ProductId = "Acme";
-        viewModel.NewFeature = "pro";
-        viewModel.AddFeatureCommand.Execute(null);
+        viewModel.Owner = "Contoso Ltd";
         _generator.DuringGenerate = async () =>
         {
             reached.SetResult();
@@ -388,107 +377,14 @@ public sealed class GenerateLicenseViewModelTests
         await reached.Task;
 
         viewModel.ProductId = "Something Else";
-        viewModel.Features.Add("export");
+        viewModel.Owner = "Someone Else";
 
         release.SetResult();
         await running;
 
         LicenseRequest request = Assert.IsType<LicenseRequest>(_generator.Request);
         Assert.Equal("Acme", request.ProductId);
-        Assert.Equal(["pro"], request.Features);
-    }
-
-    [Fact]
-    public void Features_AreAddedTrimmed_AndNeverTwice()
-    {
-        GenerateLicenseViewModel viewModel = Build();
-
-        viewModel.NewFeature = "  pro  ";
-        Assert.True(viewModel.AddFeatureCommand.CanExecute(null));
-        viewModel.AddFeatureCommand.Execute(null);
-
-        Assert.Equal(["pro"], viewModel.Features);
-        Assert.Null(viewModel.NewFeature);
-
-        viewModel.NewFeature = "pro";
-        Assert.False(viewModel.AddFeatureCommand.CanExecute(null));
-        viewModel.AddFeatureCommand.Execute(null);
-        Assert.Single(viewModel.Features);
-
-        // Ordinal, as the library compares them: a different case is a different feature.
-        viewModel.NewFeature = "Pro";
-        Assert.True(viewModel.AddFeatureCommand.CanExecute(null));
-        viewModel.AddFeatureCommand.Execute(null);
-        Assert.Equal(["pro", "Pro"], viewModel.Features);
-
-        viewModel.RemoveFeatureCommand.Execute("pro");
-        Assert.Equal(["Pro"], viewModel.Features);
-    }
-
-    [Theory]
-    [InlineData(null)]
-    [InlineData("")]
-    [InlineData("   ")]
-    public void ABlankFeature_CannotBeAdded(string? feature)
-    {
-        GenerateLicenseViewModel viewModel = Build();
-
-        viewModel.NewFeature = feature;
-
-        Assert.False(viewModel.AddFeatureCommand.CanExecute(null));
-        viewModel.AddFeatureCommand.Execute(null);
-        Assert.Empty(viewModel.Features);
-    }
-
-    [Fact]
-    public void Claims_AreAddedTrimmed_AndNeverShareAName()
-    {
-        GenerateLicenseViewModel viewModel = Build();
-
-        viewModel.NewClaimKey = " seats ";
-        viewModel.NewClaimValue = " 25 ";
-        viewModel.AddClaimCommand.Execute(null);
-
-        LicenseClaimEntry claim = Assert.Single(viewModel.Claims);
-        Assert.Equal("seats", claim.Key);
-        Assert.Equal("25", claim.Value);
-        Assert.Null(viewModel.NewClaimKey);
-        Assert.Null(viewModel.NewClaimValue);
-
-        viewModel.NewClaimKey = "seats";
-        viewModel.NewClaimValue = "50";
-        Assert.False(viewModel.AddClaimCommand.CanExecute(null));
-        viewModel.AddClaimCommand.Execute(null);
-        Assert.Single(viewModel.Claims);
-
-        viewModel.RemoveClaimCommand.Execute(claim);
-        Assert.Empty(viewModel.Claims);
-    }
-
-    /// <summary>A claim that is merely present is a legitimate one, so an empty value is allowed.</summary>
-    [Fact]
-    public void AClaim_MayHaveNoValue()
-    {
-        GenerateLicenseViewModel viewModel = Build();
-
-        viewModel.NewClaimKey = "beta";
-        Assert.True(viewModel.AddClaimCommand.CanExecute(null));
-        viewModel.AddClaimCommand.Execute(null);
-
-        Assert.Equal(string.Empty, Assert.Single(viewModel.Claims).Value);
-    }
-
-    [Fact]
-    public void ABlankClaimName_CannotBeAdded()
-    {
-        GenerateLicenseViewModel viewModel = Build();
-
-        viewModel.NewClaimKey = "  ";
-        viewModel.NewClaimValue = "25";
-
-        Assert.False(viewModel.AddClaimCommand.CanExecute(null));
-        viewModel.AddClaimCommand.Execute(null);
-        Assert.Empty(viewModel.Claims);
+        Assert.Equal("Contoso Ltd", request.Owner);
     }
 
     [Fact]
@@ -574,8 +470,6 @@ public sealed class GenerateLicenseViewModelTests
         Assert.Equal("9E3F0A", saved.DeviceId);
         Assert.Equal(new DateOnly(2026, 1, 1), saved.ValidFrom);
         Assert.Equal(new DateOnly(2026, 12, 31), saved.ValidUntil);
-        Assert.Equal(["pro"], saved.Features);
-        Assert.Equal("25", Assert.Contains("seats", saved.Claims));
         Assert.Equal("/keys/acme.private.key.json", saved.PrivateKeyPath);
 
         // Nowhere for either of them to go, which is the point.
@@ -619,8 +513,6 @@ public sealed class GenerateLicenseViewModelTests
             DeviceId = "9E3F0A",
             ValidFrom = new DateOnly(2026, 1, 1),
             ValidUntil = new DateOnly(2026, 12, 31),
-            Features = ["pro", "export"],
-            Claims = new Dictionary<string, string>(StringComparer.Ordinal) { ["seats"] = "25" },
             PrivateKeyPath = "/keys/acme.private.key.json",
         };
 
@@ -632,8 +524,6 @@ public sealed class GenerateLicenseViewModelTests
         Assert.Equal("9E3F0A", viewModel.DeviceId);
         Assert.Equal(new DateTime(2026, 1, 1), viewModel.ValidFromDate);
         Assert.Equal(new DateTime(2026, 12, 31), viewModel.ValidUntilDate);
-        Assert.Equal(["pro", "export"], viewModel.Features);
-        Assert.Equal("seats", Assert.Single(viewModel.Claims).Key);
         Assert.Equal("/keys/acme.private.key.json", viewModel.PrivateKeyPath);
 
         // The profile just named a key, possibly a different one — so a password typed for the previous key is
@@ -643,43 +533,22 @@ public sealed class GenerateLicenseViewModelTests
         Assert.False(Assert.Single(_notifications.Notifications).IsError);
     }
 
-    /// <summary>Loading replaces the lists rather than adding to them.</summary>
+    /// <summary>Loading replaces every field rather than merging into what was there.</summary>
     [Fact]
     public async Task LoadingAProfile_ReplacesWhateverWasThere()
     {
         GenerateLicenseViewModel viewModel = Filled();
         _files.AnswerOpen("/profiles/other.profile.json");
-        _profiles.Profile = new LicenseProfile { ProductId = "Other", Features = ["basic"] };
+        _profiles.Profile = new LicenseProfile { ProductId = "Other" };
 
         await viewModel.LoadProfileCommand.ExecuteAsync(null);
 
         Assert.Equal("Other", viewModel.ProductId);
-        Assert.Equal(["basic"], viewModel.Features);
-        Assert.Empty(viewModel.Claims);
+        Assert.Null(viewModel.Owner);
+        Assert.Null(viewModel.DeviceId);
         Assert.Null(viewModel.ValidFromDate);
         Assert.Null(viewModel.ValidUntilDate);
-    }
-
-    /// <summary>
-    /// A profile is a small JSON file somebody may well have edited by hand, so what it says is filtered on the
-    /// way in rather than trusted.
-    /// </summary>
-    [Fact]
-    public async Task LoadingAHandEditedProfile_DropsWhatCannotBeUsed()
-    {
-        GenerateLicenseViewModel viewModel = Build();
-        _files.AnswerOpen("/profiles/edited.profile.json");
-        _profiles.Profile = new LicenseProfile
-        {
-            ProductId = "Acme",
-            Features = ["pro", "  ", "pro", "export"],
-            Claims = new Dictionary<string, string>(StringComparer.Ordinal) { ["seats"] = "25", ["  "] = "ignored" },
-        };
-
-        await viewModel.LoadProfileCommand.ExecuteAsync(null);
-
-        Assert.Equal(["pro", "export"], viewModel.Features);
-        Assert.Equal("seats", Assert.Single(viewModel.Claims).Key);
+        Assert.Null(viewModel.PrivateKeyPath);
     }
 
     [Fact]
@@ -774,11 +643,6 @@ public sealed class GenerateLicenseViewModelTests
         viewModel.ValidFromDate = new DateTime(2026, 1, 1);
         viewModel.ValidUntilDate = new DateTime(2026, 12, 31);
         viewModel.PrivateKeyPath = "/keys/acme.private.key.json";
-        viewModel.NewFeature = "pro";
-        viewModel.AddFeatureCommand.Execute(null);
-        viewModel.NewClaimKey = "seats";
-        viewModel.NewClaimValue = "25";
-        viewModel.AddClaimCommand.Execute(null);
 
         return viewModel;
     }
