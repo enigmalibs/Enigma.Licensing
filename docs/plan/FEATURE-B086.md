@@ -1,6 +1,6 @@
 # FEATURE-B086 — Remove licence features & claims
 
-**Status:** TODO
+**Status:** DONE
 **Type:** single-phase
 **Branch:** `feature/feature-b086-drop-features-claims`
 **Run:** feature/2026-09-11-icon-trim-release

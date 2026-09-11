@@ -31,9 +31,9 @@ types never reach this library's public surface.
   the envelope's own `algorithm` field, so rewriting it makes the signature fail rather than
   downgrade.
 - **Generating licenses** — `ILicenseGenerator` signs a `LicenseRequest` carrying a product
-  identifier, an owner, feature flags, arbitrary string claims, an optional validity window and an
-  optional device binding. Identifier and creation time are defaulted per call; the one-call path
-  overload loads the key, signs and writes the file.
+  identifier, an owner, an optional validity window and an optional device binding. Identifier and
+  creation time are defaulted per call; the one-call path overload loads the key, signs and writes
+  the file.
 - **Validating licenses** — `ILicenseValidator` runs a fixed, documented check order and reports the
   **first** failing step as one of seven `LicenseFailure` reasons, so an expired license and a forged
   one are never confused. Nothing a license can be makes it throw. Product identifiers may carry an

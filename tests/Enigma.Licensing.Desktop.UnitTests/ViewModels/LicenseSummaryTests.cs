@@ -1,14 +1,11 @@
 using System;
-using System.Collections.Generic;
 using System.Globalization;
-using System.Linq;
 using Enigma.Licensing.Desktop.ViewModels;
 
 namespace Enigma.Licensing.Desktop.UnitTests.ViewModels;
 
 /// <summary>
-/// The read-only card's contents: the words an absent field gets, the shape of a formatted instant, and the
-/// dictionary flattened into rows.
+/// The read-only card's contents: the words an absent field gets, and the shape of a formatted instant.
 /// </summary>
 /// <remarks>
 /// The instants are asserted by <b>parsing them back</b> rather than by comparing them to a literal. They are
@@ -88,58 +85,6 @@ public sealed class LicenseSummaryTests
 
         Assert.Equal(from, Parse(summary.ValidFrom));
         Assert.Equal(until, Parse(summary.ValidUntil));
-    }
-
-    [Fact]
-    public void ALicenceWithNoFeatures_HasNothingToShow()
-    {
-        LicenseSummary summary = new(LicenseSamples.Licence());
-
-        Assert.Empty(summary.Features);
-        Assert.False(summary.HasFeatures);
-    }
-
-    /// <summary>
-    /// Features keep the order the licence carries them in. Unlike the claims there is nothing to sort by that
-    /// the issuer did not choose themselves.
-    /// </summary>
-    [Fact]
-    public void Features_AreShownInTheOrderTheLicenceCarriesThem()
-    {
-        LicenseSummary summary = new(LicenseSamples.Licence(features: ["pro", "api", "beta"]));
-
-        Assert.Equal(["pro", "api", "beta"], summary.Features);
-        Assert.True(summary.HasFeatures);
-    }
-
-    [Fact]
-    public void ALicenceWithNoClaims_HasNothingToShow()
-    {
-        LicenseSummary summary = new(LicenseSamples.Licence());
-
-        Assert.Empty(summary.Claims);
-        Assert.False(summary.HasClaims);
-    }
-
-    /// <summary>
-    /// The claims are ordered by name, because the payload's own order is whatever its dictionary happened to
-    /// enumerate in — and two licences saying the same thing must not read differently.
-    /// </summary>
-    [Fact]
-    public void Claims_AreShownInNameOrder()
-    {
-        Dictionary<string, string> claims = new(StringComparer.Ordinal)
-        {
-            ["tier"] = "gold",
-            ["seats"] = "25",
-            ["Ref"] = "INV-1",
-        };
-
-        LicenseSummary summary = new(LicenseSamples.Licence(claims: claims));
-
-        Assert.Equal(["Ref", "seats", "tier"], summary.Claims.Select(claim => claim.Key));
-        Assert.Equal(["INV-1", "25", "gold"], summary.Claims.Select(claim => claim.Value));
-        Assert.True(summary.HasClaims);
     }
 
     private static DateTimeOffset Parse(string value) =>

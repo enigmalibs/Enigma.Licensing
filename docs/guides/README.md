@@ -25,9 +25,9 @@ full `using` block.
 
 ## Issuing and checking
 
-- [Generating licenses](generating-licenses.md) — `LicenseRequest`, features and claims, the
-  half-open validity window, product wildcards, reissuing under an existing identifier, and the three
-  `ILicenseGenerator` overloads.
+- [Generating licenses](generating-licenses.md) — `LicenseRequest`, the half-open validity window,
+  product wildcards, reissuing under an existing identifier, and the three `ILicenseGenerator`
+  overloads.
 - [Validating licenses](validating-licenses.md) — the fixed check order, all seven `LicenseFailure`
   reasons and what to do about each, `ILicenseStore`, and `AddEnigmaLicensing()`.
 
