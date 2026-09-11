@@ -20,3 +20,6 @@
 | - PHASE04    | Release runbook, publish scripts & pack-verify | DONE   | (in FEATURE-57BC.md)      |
 | FEATURE-6C54 | Enigma.Core 2.0 migration                      | DONE   | docs/plan/FEATURE-6C54.md |
 | BUG-5147     | Centre page content at wide widths             | DONE   | docs/plan/BUG-5147.md     |
+| FEATURE-7310 | Branded desktop application icon               | TODO   | docs/plan/FEATURE-7310.md |
+| FEATURE-B086 | Remove licence features & claims               | TODO   | docs/plan/FEATURE-B086.md |
+| FEATURE-82E5 | Release v2.0.0                                 | TODO   | docs/plan/FEATURE-82E5.md |
