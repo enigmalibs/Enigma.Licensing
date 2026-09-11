@@ -97,11 +97,6 @@ public sealed class ValidateLicenseRoundTripTests : IDisposable
         generatePage.ProductId = "Acme Suite 2.*";
         generatePage.Owner = "Contoso Ltd";
         generatePage.ValidUntilDate = DateTime.Today.AddDays(30);
-        generatePage.NewFeature = "pro";
-        generatePage.AddFeatureCommand.Execute(null);
-        generatePage.NewClaimKey = "seats";
-        generatePage.NewClaimValue = "25";
-        generatePage.AddClaimCommand.Execute(null);
 
         await generatePage.GenerateLicenseCommand.ExecuteAsync(null);
 
@@ -130,9 +125,6 @@ public sealed class ValidateLicenseRoundTripTests : IDisposable
         Assert.Equal(licenseId, summary.Id);
         Assert.Equal("Acme Suite 2.*", summary.ProductId);
         Assert.Equal("Contoso Ltd", summary.Owner);
-        Assert.Equal(["pro"], summary.Features);
-        Assert.Equal("seats", Assert.Single(summary.Claims).Key);
-        Assert.Equal("25", Assert.Single(summary.Claims).Value);
         Assert.Equal("Any machine", summary.DeviceId);
     }
 

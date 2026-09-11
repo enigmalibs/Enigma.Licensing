@@ -74,8 +74,8 @@ public interface ILicenseStore
     /// <param name="productId">The product to ask about. Wildcards in the stored licenses are applied.</param>
     /// <param name="deviceId">The device to ask about, or <see langword="null"/> to skip the device check.</param>
     /// <returns>
-    /// The valid license — from which the caller reads <see cref="License.Features"/>,
-    /// <see cref="License.Claims"/> and the rest — or <see langword="null"/> when none applies.
+    /// The valid license — from which the caller reads <see cref="License.Owner"/> and the rest — or
+    /// <see langword="null"/> when none applies.
     /// </returns>
     /// <remarks>
     /// "First" is in the order the licenses were added, so the result is stable when more than one

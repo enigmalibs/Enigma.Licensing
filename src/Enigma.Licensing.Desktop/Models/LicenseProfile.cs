@@ -1,6 +1,4 @@
 using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
 
 namespace Enigma.Licensing.Desktop.Models;
 
@@ -31,17 +29,19 @@ namespace Enigma.Licensing.Desktop.Models;
 /// job, and doing it at the last moment keeps the file readable — <c>"validUntil": "2026-12-31"</c> says
 /// what it means to anyone who opens it in an editor.
 /// </para>
+/// <para>
+/// <b>A profile written by version 1.0 still loads.</b> Those files carry <c>features</c> and
+/// <c>claims</c> — two concepts the library no longer has — and the loader deserializes with
+/// System.Text.Json's default handling of unmapped members, which skips them. That is why
+/// <see cref="CurrentFormatVersion"/> did not move when the two fields went: the version is refused only
+/// when a file declares a <i>higher</i> one, and refusing a file this build reads perfectly would be the
+/// only thing a bump achieved.
+/// </para>
 /// </remarks>
 public sealed record LicenseProfile
 {
     /// <summary>The <see cref="FormatVersion"/> this version of the application writes.</summary>
     public const int CurrentFormatVersion = 1;
-
-    private static readonly IReadOnlyDictionary<string, string> EmptyClaims =
-        new ReadOnlyDictionary<string, string>(new Dictionary<string, string>(0, StringComparer.Ordinal));
-
-    private readonly IReadOnlyList<string> _features = [];
-    private readonly IReadOnlyDictionary<string, string> _claims = EmptyClaims;
 
     /// <summary>
     /// The shape of this document. A file declaring a higher version than
@@ -63,20 +63,6 @@ public sealed record LicenseProfile
 
     /// <summary>The last day the licence is usable, or <see langword="null"/> for a perpetual licence.</summary>
     public DateOnly? ValidUntil { get; init; }
-
-    /// <summary>The feature flags to grant. Never <see langword="null"/>: an explicit null reads as empty.</summary>
-    public IReadOnlyList<string> Features
-    {
-        get => _features;
-        init => _features = value ?? [];
-    }
-
-    /// <summary>The key/value claims to carry. Never <see langword="null"/>, as <see cref="Features"/> is not.</summary>
-    public IReadOnlyDictionary<string, string> Claims
-    {
-        get => _claims;
-        init => _claims = value ?? EmptyClaims;
-    }
 
     /// <summary>
     /// The private key file to sign with — a path, not the key. The file is read at signing time, so a

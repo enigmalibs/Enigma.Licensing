@@ -48,6 +48,11 @@ and turned on `IsAotCompatible`, so the trim and AOT analyzers now police the li
 Do not reintroduce a `JsonSerializer` overload that takes bare `JsonSerializerOptions` — that is exactly
 what the analyzers reject. See *Shipped* below.
 
+**`FEATURE-7310` gave the desktop app real branding, and `FEATURE-B086` took feature flags and claims out
+of the library and the app** — five public members removed, which is a **breaking change against the
+published 1.0.0** and therefore a major release. Every licence 1.0 ever issued still validates, because a
+payload member this build does not know is ignored rather than rejected. See *Shipped* below.
+
 ## What this is
 
 **Enigma.Licensing** is a .NET library that generates signed software licenses and imports, checks
@@ -99,8 +104,8 @@ report as `UnknownAlgorithm`, which it cannot do for a document that never parse
 `ArgumentException` — with the underlying `JsonException` as `InnerException` — for anything it
 cannot parse; the *validator* is the layer that never throws.
 
-Types in place: `License` (`HasFeature` is ordinal; `Features`/`Claims` coerce an assigned null to
-empty, so an untrusted payload cannot hand downstream code a null), `LicenseRequest`,
+Types in place: `License` (which also carried `Features`, `Claims` and `HasFeature` until
+`FEATURE-B086` removed them), `LicenseRequest`,
 `LicenseEnvelope` + `LicenseEnvelope.CurrentFormat`, `LicenseSignatureAlgorithm`, and the internal
 seams `AlgorithmIds` (the single enum ↔ wire-string table), `LicenseJson` and `LicensePayload`.
 `InternalsVisibleTo("Enigma.Licensing.UnitTests")` is declared in `Properties/AssemblyInfo.cs` so the
@@ -361,7 +366,8 @@ implementations `internal sealed`, all four registered `AddSingleton` by `AddEni
 
 The second placeholder page made real, and the one the issuer lives in. It takes a product identifier, an
 owner, a device (with a **This machine** button over `DeviceIdentifier.Generate()`), an optional validity
-window, a feature list and a claims list, then a private key file and its password, and signs through
+window (and, until `FEATURE-B086`, a feature list and a claims list), then a private key file and its
+password, and signs through
 `ILicenseGenerator.GenerateAndSaveAsync` on a background thread behind the overlay. Plus **licence
 profiles**: one small JSON file per saved form.
 
@@ -386,9 +392,6 @@ profiles**: one small JSON file per saved form.
   and nobody asked for it; a profile is a file the user picked from a dialog and is watching for the form to
   fill, so a file that is not a profile is reported on the info bar. Both stores are right — they answer to
   different owners.
-- **Claims are add-and-remove, never edit-in-place.** `LicenseClaimEntry` is an immutable record and the add
-  command refuses a name already present, which makes a duplicate key structurally impossible rather than
-  merely unlikely — two editable rows sharing a name would collapse into one claim on the way into the licence.
 - **The generate button is *live* for a missing field and *disabled* for a contradictory window.** PHASE02's
   rule, applied: a disabled button explains nothing, so an unfilled field is flagged when the button is
   pressed, while a window ending before it starts disables the command and says why under the dates — the
@@ -400,7 +403,7 @@ profiles**: one small JSON file per saved form.
   and reports a cancellation and a pick with no local path alike, since this app reads documents by path.
 
 Types in place: `LicenseProfile` + `LicenseProfile.CurrentFormatVersion`, `ILicenseProfileStore` /
-`LicenseProfileStore` (registered `AddSingleton`), `LicenseClaimEntry`, and a real `GenerateLicenseViewModel`
+`LicenseProfileStore` (registered `AddSingleton`) and a real `GenerateLicenseViewModel`
 + `GenerateLicenseView`.
 
 ### Validate page (FEATURE-179C-PHASE04)
@@ -435,9 +438,7 @@ stacked cards: the verdict, the document, and the licence.
 - **`LicenseSummary` formats the instants as they are** — local time with the offset, `yyyy-MM-dd HH:mm zzz` —
   so a licence issued "through the 31st" reads as midnight on the 1st, with a line on the card saying why.
   Rounding it into a friendlier day would make this page and the generate page disagree about one licence. It
-  also gives the absent optionals words ("Not stated", "Any machine", "Immediately", "Never expires") and
-  flattens `License.Claims` into `LicenseClaimEntry` rows, because a compiled binding cannot template a
-  dictionary without naming a constructed generic type in XAML.
+  also gives the absent optionals words ("Not stated", "Any machine", "Immediately", "Never expires").
 - **A verdict is not cleared when an input is edited** — it is the last check, replaced by the next one, as the
   other pages' result cards are. Reading the licence's real product off the card in order to type it into the
   expected-product field is a real workflow, and a card that vanished mid-keystroke would break it.
@@ -635,6 +636,35 @@ the whole of the change: the two places that point at it — `<ApplicationIcon>`
   script; the geometry is recorded in `docs/done/FEATURE-7310.md`, which is what a redesign needs.
   MarkdownEditor's companion `app-256.png` exists for an about-box bitmap this app does not have.
 
+### Feature flags and claims are gone (FEATURE-B086)
+
+`License.Features`, `License.Claims`, `License.HasFeature`, `LicenseRequest.Features` and
+`LicenseRequest.Claims` were **deleted**, and with them the generate page's two expanders, the validate
+card's two rows, `LicenseClaimEntry`, and `LicenseProfile`'s two fields. Validation never read either —
+the check order settles authenticity, then the window, the product and the device, and stops — so the
+two were signed, displayed and documented without anything ever deciding on them.
+
+- **Deleted outright: no `[Obsolete]`, no shim, no reader.** The same instinct as this repo's refusal to
+  read the predecessor's formats — a deprecated member nothing reads has to be explained forever. The
+  break is carried by the major version (`FEATURE-82E5`) and explained by
+  `docs/migrations/1.0.0-to-2.0.0.md`. **Do not reintroduce either concept under a new name**; an
+  entitlement mechanism, if one is ever wanted, is a new work item with its own design.
+- **Every licence ever issued stays valid, and this is load-bearing.** A 1.0 payload carries
+  `"features"` and `"claims"`; the payload is read through `PayloadJsonContext` with System.Text.Json's
+  **default** unmapped-member handling, which skips them. Nothing re-serializes a licence in order to
+  check one, so the signature still covers exactly the bytes it was made over. `LicensePayloadTests`
+  pins it. **Never set `JsonUnmappedMemberHandling.Disallow` on these documents** — that single line
+  would invalidate every licence 1.0 issued.
+- **`LicenseProfile.CurrentFormatVersion` stays 1**, for the same reason on the application's side: the
+  loader refuses only a *higher* version, a 1.0 profile's two extra fields are ignored, and bumping
+  would achieve nothing but rejecting files this build reads perfectly.
+  `LicenseProfileStoreTests` pins that too.
+- **One dev, not two phases.** The obvious library-then-app split cannot be built — the generate page
+  assigned `request.Features` — so a library-only phase would have left the solution red and failed the
+  Definition of Done on its own.
+- **The suites shrank rather than being adapted**: 1174 cases → 1138. A test with no API left to call is
+  not evidence of anything; the two that were *added* are the forward-compatibility pair above.
+
 ## Architecture & conventions
 
 These hold across the whole library, and everything here **ships** — `FEATURE-03A9` is complete, so no
@@ -799,7 +829,6 @@ src/Enigma.Licensing.Desktop/        The Avalonia issuer app (net10.0)
   ViewModels/ThemeOption.cs          One appearance choice: an AppTheme and the words offering it
   ViewModels/SettingsViewModel.cs    Apply-and-persist exactly once, plus the about section
   ViewModels/SignatureAlgorithmOption.cs   One picker entry: scheme, wire label, description, is-RSA
-  ViewModels/LicenseClaimEntry.cs          One key/value claim row — immutable, so no two can share a name
   ViewModels/LicenseVerdictSeverity.cs     Success / Warning / Error — the app's own, not InfoBarSeverity
   ViewModels/LicenseVerdict.cs             The failure → headline/explanation/severity table + the class flags
   ViewModels/LicenseSummary.cs             What a licence says, as the strings the read-only card shows
@@ -838,7 +867,7 @@ docs/done/                           Per-dev completion records
 docs/guides/README.md                The index — repo-only, so relative links to the guides are correct here
 docs/guides/license-format.md        The enigma-license/1 envelope, the payload, the algorithm identifiers
 docs/guides/keys.md                  enigma-key/1, generation, password encryption, fingerprints, IKeyService
-docs/guides/generating-licenses.md   LicenseRequest, features/claims, the half-open window, the three overloads
+docs/guides/generating-licenses.md   LicenseRequest, the half-open window, wildcards, the three overloads
 docs/guides/validating-licenses.md   The check order, the seven failures, ILicenseStore, AddEnigmaLicensing()
 docs/guides/device-identity.md       DeviceIdentifier, its weaknesses, and plugging in another scheme
 docs/RELEASE.md                      The release runbook — pre-flight, merge, tag, pack, push, app zips

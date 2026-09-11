@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Text;
 
 namespace Enigma.Licensing.UnitTests;
@@ -33,8 +32,6 @@ internal static class LicenseTestData
         ValidFrom = ValidFrom,
         ValidUntil = ValidUntil,
         Owner = "Contoso Ltd",
-        Features = ["export", "sync"],
-        Claims = new Dictionary<string, string> { ["seats"] = "25", ["tier"] = "pro" },
     };
 
     /// <summary>A license with only the three required fields set.</summary>

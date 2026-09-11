@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 
 namespace Enigma.Licensing.Desktop.UnitTests;
 
@@ -32,8 +31,6 @@ internal static class LicenseSamples
     /// <param name="deviceId">The machine it is locked to, or <see langword="null"/> for one that runs anywhere.</param>
     /// <param name="validFrom">When it starts, or <see langword="null"/> for immediately.</param>
     /// <param name="validUntil">When it stops, or <see langword="null"/> for never.</param>
-    /// <param name="features">The flags it grants.</param>
-    /// <param name="claims">The extra data it carries.</param>
     /// <returns>The licence.</returns>
     internal static License Licence(
         string id = "01JYQ7ZK3MEXAMPLEEXAMPLE00",
@@ -41,9 +38,7 @@ internal static class LicenseSamples
         string? owner = "Contoso Ltd",
         string? deviceId = null,
         DateTimeOffset? validFrom = null,
-        DateTimeOffset? validUntil = null,
-        IReadOnlyCollection<string>? features = null,
-        IReadOnlyDictionary<string, string>? claims = null) => new()
+        DateTimeOffset? validUntil = null) => new()
         {
             Id = id,
             CreatedAt = Issued,
@@ -52,8 +47,6 @@ internal static class LicenseSamples
             DeviceId = deviceId,
             ValidFrom = validFrom,
             ValidUntil = validUntil,
-            Features = features ?? [],
-            Claims = claims ?? new Dictionary<string, string>(0),
         };
 
     /// <summary>Builds the verdict on a licence that passed every check.</summary>

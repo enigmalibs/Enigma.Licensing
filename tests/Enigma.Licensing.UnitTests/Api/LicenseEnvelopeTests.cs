@@ -283,8 +283,7 @@ public sealed class LicenseEnvelopeTests
         Assert.Equal(original.ProductId, read.ProductId);
         Assert.Equal(original.CreatedAt, read.CreatedAt);
         Assert.Equal(original.ValidUntil, read.ValidUntil);
-        Assert.Equal(original.Claims, read.Claims);
-        Assert.True(read.HasFeature("export"));
+        Assert.Equal(original.Owner, read.Owner);
     }
 
     /// <summary>

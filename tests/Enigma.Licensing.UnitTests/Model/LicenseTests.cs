@@ -1,75 +1,13 @@
 using System;
-using System.Collections.Generic;
 
 namespace Enigma.Licensing.UnitTests.Model;
 
 /// <summary>
-/// Covers <see cref="License"/> — the immutability the signed model depends on, the never-null
-/// guarantee on its two collections, and <see cref="License.HasFeature"/>.
+/// Covers <see cref="License"/> — the immutability the signed model depends on, and the way its dates
+/// carry an offset.
 /// </summary>
 public sealed class LicenseTests
 {
-    [Fact]
-    public void Collections_DefaultToEmptyRatherThanNull()
-    {
-        License license = LicenseTestData.MinimalLicense();
-
-        Assert.Empty(license.Features);
-        Assert.Empty(license.Claims);
-    }
-
-    /// <summary>
-    /// A payload carrying <c>"features": null</c> assigns null through the initializer, and code
-    /// downstream of an untrusted document must not have to null-check what the type declares as
-    /// non-nullable.
-    /// </summary>
-    [Fact]
-    public void Collections_CoerceAnAssignedNullToEmpty()
-    {
-        License license = LicenseTestData.MinimalLicense() with
-        {
-            Features = null!,
-            Claims = null!,
-        };
-
-        Assert.Empty(license.Features);
-        Assert.Empty(license.Claims);
-        Assert.False(license.HasFeature("export"));
-    }
-
-    [Fact]
-    public void HasFeature_FindsAGrantedFeature()
-    {
-        License license = LicenseTestData.FullLicense();
-
-        Assert.True(license.HasFeature("export"));
-        Assert.True(license.HasFeature("sync"));
-    }
-
-    /// <summary>
-    /// Comparison is ordinal and case-sensitive: feature flags are identifiers the application and
-    /// the issuer agree on, so <c>"Export"</c> is a different flag, not a sloppy spelling of one.
-    /// </summary>
-    [Theory]
-    [InlineData("Export")]
-    [InlineData("EXPORT")]
-    [InlineData("export ")]
-    [InlineData("expor")]
-    [InlineData("")]
-    [InlineData("print")]
-    public void HasFeature_RejectsAnythingButAnExactMatch(string feature) =>
-        Assert.False(LicenseTestData.FullLicense().HasFeature(feature));
-
-    [Fact]
-    public void HasFeature_ThrowsForANullFeature()
-    {
-        License license = LicenseTestData.FullLicense();
-
-        ArgumentNullException exception = Assert.Throws<ArgumentNullException>(() => license.HasFeature(null!));
-
-        Assert.Equal("feature", exception.ParamName);
-    }
-
     /// <summary>
     /// <c>with</c> produces a new instance and leaves the source untouched — the property that makes
     /// it safe to hold a validated license and hand it around.
@@ -87,16 +25,13 @@ public sealed class LicenseTests
         Assert.Equal("OtherApp", altered.ProductId);
         Assert.Null(altered.Owner);
         Assert.Equal(original.Id, altered.Id);
-        Assert.Same(original.Features, altered.Features);
     }
 
     [Fact]
     public void Equality_ComparesByValueAcrossTheScalarMembers()
     {
-        IReadOnlyCollection<string> features = ["export"];
-
-        License first = LicenseTestData.MinimalLicense() with { Features = features };
-        License second = LicenseTestData.MinimalLicense() with { Features = features };
+        License first = LicenseTestData.MinimalLicense() with { Owner = "Contoso Ltd" };
+        License second = LicenseTestData.MinimalLicense() with { Owner = "Contoso Ltd" };
 
         Assert.Equal(first, second);
         Assert.Equal(first.GetHashCode(), second.GetHashCode());

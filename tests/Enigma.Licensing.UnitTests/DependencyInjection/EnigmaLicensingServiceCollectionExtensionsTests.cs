@@ -174,7 +174,7 @@ public sealed class EnigmaLicensingServiceCollectionExtensionsTests(SignedLicens
         ILicenseStore store = provider.GetRequiredService<ILicenseStore>();
 
         LicenseEnvelope issued = generator.Generate(
-            SignedLicenseTestData.InWindow() with { Features = ["export"] },
+            SignedLicenseTestData.InWindow() with { Owner = "Contoso Ltd" },
             keys.MLDsa.PrivateKey);
 
         string document = await SignedLicenseTestData.SaveToStringAsync(issued, Token);
@@ -192,7 +192,7 @@ public sealed class EnigmaLicensingServiceCollectionExtensionsTests(SignedLicens
         License? found = store.FindValidLicense(SignedLicenseTestData.ProductId);
 
         Assert.NotNull(found);
-        Assert.True(found.HasFeature("export"));
+        Assert.Equal("Contoso Ltd", found.Owner);
     }
 
     /// <summary>

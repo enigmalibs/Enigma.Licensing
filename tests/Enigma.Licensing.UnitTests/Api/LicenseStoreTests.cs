@@ -40,7 +40,6 @@ public sealed class LicenseStoreTests(SignedLicenseFixture keys)
         LicenseRequest request = SignedLicenseTestData.Request() with
         {
             Owner = "Contoso Ltd",
-            Features = ["export"],
         };
 
         store.Add(_generator.Generate(request, keys.MLDsa.PrivateKey), keys.MLDsa.PublicKey);
@@ -49,7 +48,7 @@ public sealed class LicenseStoreTests(SignedLicenseFixture keys)
 
         Assert.NotNull(found);
         Assert.Equal("Contoso Ltd", found.Owner);
-        Assert.True(found.HasFeature("export"));
+        Assert.Equal(SignedLicenseTestData.ProductId, found.ProductId);
     }
 
     [Fact]
