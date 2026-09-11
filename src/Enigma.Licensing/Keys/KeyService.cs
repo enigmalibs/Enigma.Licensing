@@ -62,11 +62,15 @@ public sealed class KeyService : IKeyService
                 $"{KeyFormat.MaxRsaKeySizeBits} bits.");
         }
 
-        // password: null — the PEM is always written unencrypted here; the file-level cipher is what
-        // protects a private key.
-        (string publicKeyPem, string privateKeyPem) = _rsaService.GenerateRsaKeyPair(rsaKeySizeBits);
+        // One handle carries both halves; the two PEMs are exports of it, and they are what the format
+        // stores. password: null on the private export — the PEM is always written unencrypted here;
+        // the file-level cipher is what protects a private key.
+        RsaKey rsaKey = _rsaService.GenerateRsaKey(rsaKeySizeBits);
 
-        return CreatePair(algorithm, Encoding.UTF8.GetBytes(publicKeyPem), Encoding.UTF8.GetBytes(privateKeyPem));
+        return CreatePair(
+            algorithm,
+            Encoding.UTF8.GetBytes(rsaKey.ExportPublicKeyPem()),
+            Encoding.UTF8.GetBytes(rsaKey.ExportPrivateKeyPem(password: null)));
     }
 
     /// <inheritdoc />
