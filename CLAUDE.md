@@ -612,6 +612,29 @@ Types in place: no new type and no new package. `LicensingKey` gained `RsaHandle
   evidence is a throwaway probe (measure + arrange, `Bounds` read back), the zero-warning build and an
   `AVLN` count of 0. A headless-Avalonia dependency for one setter would cost more than it guards.
 
+### The application icon is real branding now (FEATURE-7310)
+
+`Assets/appicon.ico` was placeholder branding carried over from the predecessor app. It is now a
+**white key on a `#3574F0` rounded square**, in the idiom Enigma.MarkdownEditor established, and it is
+the whole of the change: the two places that point at it — `<ApplicationIcon>` in the csproj and
+`Icon="/Assets/appicon.ico"` on `MainWindow` — are untouched, so only the bytes moved.
+
+- **The container is copied exactly; the glyph is not.** `#3574F0`, a 7/256 inset and a 44/256 corner
+  radius were measured out of `Enigma.MarkdownEditor`'s `app-256.png`, not guessed — that square is the
+  family mark. The glyph is this app's own, because two Enigma apps sharing one glyph would be two
+  apps nobody can tell apart in a taskbar.
+- **A key, because 16 px decides an application icon.** A certificate-and-seal is the better picture of
+  *licensing* at 256 px and collapses into noise at 16; the key's ring, shaft and two teeth survive, as
+  the magnified 16/24/32 frames showed. It is also what the app's first page produces.
+- **Seven frames — 16, 24, 32, 48, 64, 128, 256 — each rendered at its own size**, not downscaled from
+  256: this geometry is circles and rectangles, which stay crisp when drawn small and smear when
+  resampled. Frames are uncompressed 32-bpp BGRA DIBs, as the reference `.ico` is, because Skia's choice
+  of frame inside an `.ico` is undocumented and this icon sits in the title bar. That is what makes the
+  file ~364 KB; a PNG-compressed frame would be ~20× smaller and is not worth the unknown.
+- **No generator is committed and no second asset ships.** The artwork was authored once by a throwaway
+  script; the geometry is recorded in `docs/done/FEATURE-7310.md`, which is what a redesign needs.
+  MarkdownEditor's companion `app-256.png` exists for an about-box bitmap this app does not have.
+
 ## Architecture & conventions
 
 These hold across the whole library, and everything here **ships** — `FEATURE-03A9` is complete, so no
@@ -749,7 +772,7 @@ src/Enigma.Licensing.Desktop/        The Avalonia issuer app (net10.0)
   Program.cs                         Synchronous entry point; the host is built in App, not here
   App.axaml(.cs)                     Theme merge + style classes (the centred page frame); owns the IHost
   app.manifest                       Per-monitor-v2 DPI awareness (version bumped at release time)
-  Assets/appicon.ico                 Placeholder branding, reused from the predecessor app
+  Assets/appicon.ico                 A white key on a #3574F0 rounded square; 7 frames, 16→256 (FEATURE-7310)
   Hosting/EnigmaAvaloniaServiceCollectionExtensions.cs   AddEnigmaAvaloniaDesktop() — the library's six
   Hosting/ServiceCollectionExtensions.cs                 AddEnigmaLicensingDesktop() — + AddEnigmaLicensing()
   Properties/AssemblyInfo.cs         InternalsVisibleTo for the app's test assembly (PHASE02 — see Shipped)

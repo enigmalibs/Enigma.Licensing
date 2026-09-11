@@ -1,6 +1,6 @@
 # FEATURE-7310 — Branded desktop application icon
 
-**Status:** TODO
+**Status:** DONE
 **Type:** single-phase
 **Branch:** `feature/feature-7310-app-icon`
 **Run:** feature/2026-09-11-icon-trim-release
