@@ -5,7 +5,7 @@ licenses and checks them, signing with classical RSA or post-quantum ML-DSA keys
 follows one rule: a license's signature covers the stored payload bytes exactly, with no
 canonicalization step and no string built for signing, so a signer and a verifier can never disagree
 about what was signed. All cryptography comes from
-[Enigma.Core](https://www.nuget.org/packages/Enigma.Core) 1.1.0, whose types — like those of every
+[Enigma.Core](https://www.nuget.org/packages/Enigma.Core) 2.0.0, whose types — like those of every
 other dependency bar the DI abstractions — never appear on the public API.
 
 ## Feature overview
@@ -53,7 +53,7 @@ other dependency bar the DI abstractions — never appear on the public API.
 ## Compatibility
 
 - Targets **netstandard2.0**, **net8.0** and **net10.0**.
-- Built on **Enigma.Core 1.1.0**. Other runtime dependencies:
+- Built on **Enigma.Core 2.0.0**. Other runtime dependencies:
   **Microsoft.Extensions.DependencyInjection.Abstractions 9.0.18** (the one dependency deliberately
   visible on the public surface, since `AddEnigmaLicensing()` takes and returns an
   `IServiceCollection`), **Ulid 1.4.1** and **DeviceId 6.11.0**; **System.Buffers 4.6.1** and

@@ -38,17 +38,18 @@ internal sealed class LicenseSignatures
     /// <param name="payload">The exact bytes to sign — the payload as it will be stored.</param>
     /// <returns>The signature.</returns>
     /// <remarks>
-    /// The RSA path passes <see langword="null"/> for Enigma.Core's PEM password because an
-    /// <c>enigma-key/1</c> file never holds a PEM that is encrypted at the PEM layer; by the time a key
-    /// reaches here its material is already in the clear.
+    /// The RSA path hands Enigma.Core the key's parsed handle
+    /// (<see cref="LicensingKey.RsaHandle"/>), which the key imports from its own material once and
+    /// keeps. No passphrase appears anywhere on this path: an <c>enigma-key/1</c> file never holds a
+    /// PEM that is encrypted at the PEM layer, so by the time a key reaches here its material is
+    /// already in the clear.
     /// </remarks>
     internal byte[] Sign(LicensingKey privateKey, byte[] payload) =>
         CoreAlgorithms.IsRsa(privateKey.Algorithm)
             ? _rsaService.Sign(
                 payload,
-                privateKey.Pem,
-                CoreAlgorithms.ToRsaSignatureAlgorithm(privateKey.Algorithm),
-                password: null)
+                privateKey.RsaHandle,
+                CoreAlgorithms.ToRsaSignatureAlgorithm(privateKey.Algorithm))
             : CreateMLDsaService(privateKey.Algorithm).Sign(payload, privateKey.Material);
 
     /// <summary>
@@ -81,13 +82,16 @@ internal sealed class LicenseSignatures
             return false;
         }
 
+        // The RSA key's PEM is parsed inside this try on purpose: reading publicKey.RsaHandle is what
+        // imports it the first time, and material that turns out not to be an importable key is one
+        // more way of saying this key does not vouch for these bytes — a verdict, not an exception.
         try
         {
             return CoreAlgorithms.IsRsa(algorithm)
                 ? _rsaService.Verify(
                     payload,
                     signature,
-                    publicKey.Pem,
+                    publicKey.RsaHandle,
                     CoreAlgorithms.ToRsaSignatureAlgorithm(algorithm))
                 : CreateMLDsaService(algorithm).Verify(payload, signature, publicKey.Material);
         }

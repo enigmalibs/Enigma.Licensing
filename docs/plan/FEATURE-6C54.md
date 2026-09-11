@@ -1,6 +1,6 @@
 # FEATURE-6C54 — Enigma.Core 2.0 migration
 
-**Status:** TODO
+**Status:** DONE
 **Type:** single-phase
 **Branch:** `feature/feature-6c54-enigma-core-2`
 **Run:** vibe/2026-09-11-core-2-centering
