@@ -21,7 +21,8 @@ doc, comment or summary that describes a planned type as if it already ships.
 hosting, theme and settings**, `PHASE02` the **keys page and the four application service seams**,
 `PHASE03` the **generate page and licence profiles**, and `PHASE04` the **validate page**. There are no
 placeholder pages left — the app generates real key pairs, signs real licences with them and reaches real
-verdicts about them.
+verdicts about them. `BUG-5147` then centred their content: the page frame was pinned left, so a wide
+window put everything against the rail with dead space beside it.
 
 **`FEATURE-57BC` (the v1.0.0 release) is complete too, and with it every planned work item.** `PHASE01`
 gave the library its **packaging metadata**, made it **trim- and AOT-safe**, and put its third-party
@@ -32,6 +33,12 @@ the package packable — NU5040 is gone; and `PHASE04` the **release runbook, th
 scripts and the pack-verify pass**. **Nothing outward-facing has happened**: no tag exists, nothing is
 pushed, and `github.com/enigmalibs/Enigma.Licensing` is still to be created. `docs/RELEASE.md` is the
 checklist for all of that, and running it is the maintainer's, never an agent's.
+
+**`FEATURE-6C54` moved the library onto Enigma.Core 2.0.0**, whose only breaking theme is that RSA keys
+cross Core's surface as a reusable `RsaKey` handle instead of PEM text. Nothing observable here changed:
+the two document formats are byte-identical, every algorithm and verdict behaves as before, and the
+library's version stays 1.0.0 (nothing has ever been tagged or pushed). `LicensingKey` now parses its
+material **once** and holds the handle — see *Shipped* below, and never import a handle at a call site.
 
 **The trim/AOT decision that was outstanding is answered — the fix shipped.** Serialization was
 reflection-based, which meant a consumer publishing with `PublishAot`, or with
@@ -45,7 +52,7 @@ what the analyzers reject. See *Shipped* below.
 
 **Enigma.Licensing** is a .NET library that generates signed software licenses and imports, checks
 and validates them, signing with RSA or post-quantum ML-DSA keys. All cryptography comes from
-[Enigma.Core](https://www.nuget.org/packages/Enigma.Core) 1.1.0. A companion Avalonia desktop app
+[Enigma.Core](https://www.nuget.org/packages/Enigma.Core) 2.0.0. A companion Avalonia desktop app
 (`src/Enigma.Licensing.Desktop`, `FEATURE-179C`) gives the issuer a UI for the same operations, and all
 four of its pages — keys, generate, validate and settings — ship.
 
@@ -466,7 +473,7 @@ had parked on this phase were surfaced at build time, confirmed, and the plan am
   `Microsoft.NET.ILLink.Tasks` as an auto-referenced build task — verified absent from the nuspec's
   dependency groups.
 - **The contexts are the only resolver these documents have**, so the whole suite is the real proof: every
-  save, load, sign and verify in 1164 tests runs through source generation, and a document type that lost
+  save, load, sign and verify in 1174 tests runs through source generation, and a document type that lost
   its metadata would throw rather than quietly reflect. `LicenseJsonTests` pins the diagnosis, including
   that a context answers **only** for what it was given — a context resolving an unregistered type would
   mean the fallback had crept back in.
@@ -534,6 +541,76 @@ source file and no test changed; the one code edit is a csproj comment.
 
 Files in place: `docs/RELEASE.md`, `scripts/publish.sh` (mode 755), `scripts/publish.ps1`. No new type,
 no new package, no new test.
+
+### Enigma.Core 2.0.0 & the RSA key handle (FEATURE-6C54)
+
+The pin moved from **1.1.0 to 2.0.0**, whose one breaking theme is that **RSA key material no longer
+crosses Enigma.Core's surface as PEM text**: a PEM is parsed once into an `RsaKey` handle, and that
+handle goes to every RSA call. The removed PEM-string overloads were deleted outright, so the three
+call sites here failed to compile — which is the whole detection mechanism. Nothing about this
+library's own behaviour moved: same formats, same six algorithms, same check order, same error
+contract. The migration instructions live in the sibling repo at
+`../Enigma.Core/docs/migrations/1.1.0-to-2.0.0.md`.
+
+- **`LicensingKey` parses its material once and holds the handle** (`internal RsaHandle`, initialised
+  on first read with `Interlocked.CompareExchange`). This is the point of the release rather than an
+  optimisation: BouncyCastle validates a private key's CRT components as it constructs it, so roughly
+  84 % of a 1.x `Sign(data, pem, password)` call was key reconstruction. **Never import a handle at a
+  call site** — a `LicensingKey` is one key for its whole lifetime, which is what makes "parse once per
+  key" structural. The lock-free initialisation is deliberate and load-bearing: `LicenseStore`
+  snapshots under its lock and verifies *outside* it, so one public key really is read from several
+  threads at once, and an `RsaKey` is immutable, so a lost race only discards an identical handle.
+  `KeyHandleTests` pins all of it, the racing readers included.
+- **`Verify` reads the handle *inside* its existing `try`.** Importing is where unusable RSA material
+  now surfaces, and to the validator that is one more way of saying this key does not vouch for these
+  bytes — a verdict, not an exception. Moving that read out of the `try` would break fail-closed.
+- **The two halves import separately**, `ImportPublicKeyPem` / `ImportPrivateKeyPem` by `Kind`, so a
+  public `LicensingKey` cannot sign even though Core's private handle would have served both. The
+  generated handle is deliberately **not** seeded into either half — one lazy path, and no private
+  material parked on a public key.
+- **`KeyService` generates one handle and exports both PEMs from it** (`GenerateRsaKey` →
+  `ExportPublicKeyPem()` / `ExportPrivateKeyPem(password: null)`). Unencrypted at the PEM layer, as
+  before — the file-level Argon2id + AES-256-GCM cipher is what protects a private key, and 2.0.0's
+  move to PBES2 for *PEM-level* passwords therefore never applies here.
+- **No file changed, and no stored key needs converting.** `ExportPublicKeyPem()` is still SPKI
+  `PUBLIC KEY`, `ExportPrivateKeyPem(null)` still unencrypted PKCS#8 `PRIVATE KEY`, and
+  `ImportPrivateKeyPem` reads everything 1.x wrote. `enigma-key/1` and `enigma-license/1` are
+  byte-identical across this bump.
+- **Two migration steps deliberately do not apply**, recorded so nobody hunts for them: the
+  certificate service (no call site exists here) and "move the bad-passphrase `catch` to the import"
+  (no PEM in an `enigma-key/1` file is ever encrypted at the PEM layer).
+- **The dependency graph did not move**: BouncyCastle 2.7.0 on all three TFMs, `System.Buffers` 4.6.1
+  on netstandard2.0, still MIT, still the same TFM set — so `FEATURE-57BC-PHASE01`'s licence audit
+  stands as written. The desktop app keeps **one** Enigma.Core: `Enigma.Avalonia.Desktop` 1.0.0 asks
+  for `>= 1.0.0` and its assembly references `Enigma.Core.Encoding` and nothing from the RSA or
+  certificate surface — the only surface 2.0.0 changed.
+- **Declined, with reasons:** 2.0.0's new `IMLDsaPemService` could put ML-DSA keys in PEM and collapse
+  the `key` field's two encodings into one — not adopted, because nothing on disk needs to move and the
+  format is documented in five guides; `KeyMaterial.Validate` stays a structural check rather than a
+  real parse, which would move the documented exception type; and the Checksum module and ML-KEM PEM
+  services are additive with nothing here to replace.
+
+Types in place: no new type and no new package. `LicensingKey` gained `RsaHandle` (internal), and
+`tests/.../Keys/KeyHandleTests.cs` is the phase's only new file.
+
+### The page frame is centred, not left-aligned (BUG-5147)
+
+`StackPanel.page` in `App.axaml` is the desktop app's page frame — `Margin 24`, `Spacing 16`,
+`MaxWidth 880` — and every page is a `ScrollViewer` over one of them. Its `HorizontalAlignment` was
+`Left`, which left a growing band of dead space on the right of a wide or maximised window. It is now
+**`Stretch`**, and that is the whole change: one setter, no view file touched.
+
+- **`Stretch` is what centres it; `Center` would shrink it.** Avalonia arranges a `Stretch`-aligned
+  element at the width it was offered and then centres it when a constraint stopped it from filling that
+  width, which is exactly the wanted behaviour — full width below 880, centred above it. A
+  `Center`-aligned element is arranged at its *desired* width instead, so a stack of settings cards
+  would centre and visibly narrow at once. Measured with the real numbers (880 cap, child wanting 400):
+  at 1400 available, `Stretch` → x=260 w=880 while `Center` → x=500 w=400; at 670 available (the
+  narrowest content area this window allows), `Stretch` → x=0 w=670. **Do not "correct" it to
+  `Center`** — the reason is in a comment beside the setter.
+- **No layout test came with it.** The desktop suite stands up no Avalonia platform on purpose, so the
+  evidence is a throwaway probe (measure + arrange, `Bounds` read back), the zero-warning build and an
+  `AVLN` count of 0. A headless-Avalonia dependency for one setter would cost more than it guards.
 
 ## Architecture & conventions
 
@@ -666,11 +743,11 @@ src/Enigma.Licensing/                The library
   Keys/IKeyService.cs                Generate / save / load keys — the interface and its error contract
   Keys/KeyService.cs                 Its implementation, on Enigma.Core
   Keys/KeyKind.cs                    Public or private half
-  Keys/LicensingKey.cs               A parsed key + LicensingKey.CurrentFormat; material stays internal
+  Keys/LicensingKey.cs               A parsed key + CurrentFormat; material internal, RSA handle parsed once
   Keys/LicensingKeyPair.cs           Both halves, as generation returns them
 src/Enigma.Licensing.Desktop/        The Avalonia issuer app (net10.0)
   Program.cs                         Synchronous entry point; the host is built in App, not here
-  App.axaml(.cs)                     Theme merge + style classes; owns the IHost and the startup wiring
+  App.axaml(.cs)                     Theme merge + style classes (the centred page frame); owns the IHost
   app.manifest                       Per-monitor-v2 DPI awareness (version bumped at release time)
   Assets/appicon.ico                 Placeholder branding, reused from the predecessor app
   Hosting/EnigmaAvaloniaServiceCollectionExtensions.cs   AddEnigmaAvaloniaDesktop() — the library's six
@@ -721,7 +798,7 @@ tests/Enigma.Licensing.UnitTests/    xUnit v3 test suite
   DependencyInjection/               AddEnigmaLicensing() — resolution, lifetimes, TryAdd, round-trips
   Internal/                          Tests over the internal seams (needs InternalsVisibleTo)
     LicenseJsonTests.cs              The source-gen guarantee: the resolver, the settings, and nothing else
-  Keys/                              Key generation, storage & encryption + their shared fixtures
+  Keys/                              Key generation, storage, encryption & the RSA handle + their fixtures
   Model/                             Tests over the records
 tests/Enigma.Licensing.Desktop.UnitTests/   xUnit v3 test suite for the app (net10.0)
   Hosting/                           The container wiring: what is registered, and with which lifetime
@@ -757,7 +834,7 @@ There is **no CI workflow**, deliberately — consistent with every sibling Enig
   polyfill surface is exercised through the `net8.0` paths. The desktop app and its test project are
   **net10.0** only — an application, not a package, so nothing is gained by reaching back.
 - **Currently pinned** in `Directory.Packages.props` — only what the code actually references:
-  `Enigma.Core` 1.1.0, `Microsoft.Extensions.DependencyInjection.Abstractions` 9.0.18, `Ulid` 1.4.1 and
+  `Enigma.Core` 2.0.0, `Microsoft.Extensions.DependencyInjection.Abstractions` 9.0.18, `Ulid` 1.4.1 and
   `DeviceId` 6.11.0 (all three TFMs), `PolySharp` 1.16.0,
   `System.Buffers` 4.6.1 and `System.Text.Json` 10.0.10 (those three **netstandard2.0 only** in the
   library), `xunit.v3` 3.2.2, `coverlet.collector` 10.0.1,
@@ -806,7 +883,7 @@ There is **no CI workflow**, deliberately — consistent with every sibling Enig
   arrive transitively and are pinned explicitly anyway, house convention, so the version is visible rather
   than inherited. `AvaloniaUI.DiagnosticsSupport` replaces `Avalonia.Diagnostics`, removed in Avalonia 12,
   and the app csproj strips it from every non-Debug build. `Enigma.Avalonia.Desktop` also brings
-  `Enigma.Core` (≥ 1.0.0) transitively, behind its binary editors; the graph closes on the 1.1.0 the
+  `Enigma.Core` (≥ 1.0.0) transitively, behind its binary editors; the graph closes on the 2.0.0 the
   library pins, so there is one Enigma.Core and one BouncyCastle in the app.
 - **Add a pin when the reference actually lands**, not in advance — and never put `Version=` on a
   `<PackageReference>`; all versions live in `Directory.Packages.props`.
@@ -825,6 +902,21 @@ DOTNET_ROOT=~/.dotnet dotnet test --solution Enigma.Licensing.slnx -c Release
 
 Note the `--solution` flag: on the .NET 10 SDK in MTP mode, `dotnet test <Solution>.slnx` is
 rejected.
+
+**This machine has no .NET 8 runtime** (`~/.dotnet/shared/Microsoft.NETCore.App` holds 10.0.10 alone),
+so the library test project's **net8.0 leg cannot launch** — the run reports `error: 1` and a non-zero
+exit code while every test that did run passed. That is a missing runtime, not a red suite: the net8.0
+binaries build clean and pass when run with a roll-forward, which is how that leg is verified here.
+
+```bash
+# The net8.0-compiled tests, executed on the installed 10.x runtime
+cd tests/Enigma.Licensing.UnitTests/bin/Release/net8.0
+DOTNET_ROOT=~/.dotnet DOTNET_ROLL_FORWARD=LatestMajor ./Enigma.Licensing.UnitTests.exe
+```
+
+Installing the .NET 8 runtime makes the plain `dotnet test` command green again. Do not "fix" this by
+dropping `net8.0` from the test project — that TFM is how the netstandard2.0 polyfill surface is
+exercised (and see `NETSDK1138` below for when dropping it *does* become the answer).
 
 Those two commands are also the release pre-flight. `scripts/publish.sh` (or its `.ps1` twin) builds
 the app's distribution zips into `artifacts/`, and everything beyond that — tag, pack, push — is
@@ -867,8 +959,8 @@ passed `TestContext.Current.CancellationToken`. `LicenseEnvelopeTests`, the `Key
 `private static CancellationToken Token => TestContext.Current.CancellationToken;`
 for this — copy that pattern rather than suppressing the rule.
 
-**Key generation is the expensive part of the suite** (most of the ~13 s run over 1164 cases — 866 in the
-library suite, 298 in the desktop one, which costs about two seconds): ten RSA
+**Key generation is the expensive part of the suite** (most of the ~13 s run over 1174 cases — 876 in the
+library suite, 298 in the desktop one, which costs about two seconds): eleven RSA
 pairs, one at 4096 bits, plus Argon2id at 64 MiB per encrypted round-trip. Two collection fixtures exist
 so nothing generates a key it does not need to:
 
@@ -967,7 +1059,9 @@ Each unit of work gets its own branch (`feature/…`, `bugfix/…`, `review/…`
 plan's acceptance criteria are met, the roadmap/plan statuses are updated, and the completion doc is
 written. Commits are left to the maintainer.
 
-The sequence was a hard dependency chain, and all of it has landed: `FEATURE-2FE8` (repo skeleton) →
-`FEATURE-03A9` (licensing core library, 4 phases) → `FEATURE-179C` (desktop app, 4 phases) →
-`FEATURE-57BC` (v1.0.0 release, 4 phases) — **every item and every phase is `DONE`**. The roadmap has
-no `TODO` row left, so the next work item is a new one: allocate an ID, plan it, and append its row.
+The original sequence was a hard dependency chain, and all of it has landed: `FEATURE-2FE8` (repo
+skeleton) → `FEATURE-03A9` (licensing core library, 4 phases) → `FEATURE-179C` (desktop app, 4 phases)
+→ `FEATURE-57BC` (v1.0.0 release, 4 phases). Everything after it is maintenance on a feature-done
+repository, so the items are independent and single-phase: `FEATURE-6C54` (Enigma.Core 2.0.0) and
+`BUG-5147` (centre the pages' content). Read `docs/roadmap.md` for what is still `TODO`; a new work
+item means allocating an ID, planning it, and appending its row.

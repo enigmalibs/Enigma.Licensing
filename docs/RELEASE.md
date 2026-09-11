@@ -83,8 +83,8 @@ dependency floors:
 
 | Target framework | Dependencies |
 |---|---|
-| `netstandard2.0` | Enigma.Core 1.1.0 · Microsoft.Extensions.DependencyInjection.Abstractions 9.0.18 · Ulid 1.4.1 · DeviceId 6.11.0 · System.Buffers 4.6.1 · System.Text.Json 10.0.10 |
-| `net8.0`, `net10.0` | Enigma.Core 1.1.0 · Microsoft.Extensions.DependencyInjection.Abstractions 9.0.18 · Ulid 1.4.1 · DeviceId 6.11.0 |
+| `netstandard2.0` | Enigma.Core 2.0.0 · Microsoft.Extensions.DependencyInjection.Abstractions 9.0.18 · Ulid 1.4.1 · DeviceId 6.11.0 · System.Buffers 4.6.1 · System.Text.Json 10.0.10 |
+| `net8.0`, `net10.0` | Enigma.Core 2.0.0 · Microsoft.Extensions.DependencyInjection.Abstractions 9.0.18 · Ulid 1.4.1 · DeviceId 6.11.0 |
 
 ```bash
 unzip -l ./artifacts/Enigma.Licensing.X.Y.Z.nupkg

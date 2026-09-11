@@ -47,12 +47,13 @@
   <!-- LangVersion / Nullable / ImplicitUsings / TreatWarningsAsErrors are deliberately absent:
        they come from Directory.Build.props and must never be repeated per-project. No Version
        attributes either — versions live in Directory.Packages.props (CPM). -->
-  <!-- Enigma.Core 1.1.0 — the cryptographic engine behind every service here: RSA and ML-DSA key
+  <!-- Enigma.Core 2.0.0 — the cryptographic engine behind every service here: RSA and ML-DSA key
        generation and signing, Argon2id key derivation, AES-256-GCM, SHA-256 and hex encoding. It
-       multi-targets the same three TFMs, so the reference is unconditional. It is an implementation
-       detail: no Enigma.Core.* or Org.BouncyCastle.* type may reach this library's public surface —
-       guarded by PublicSurfaceIsolationTests, which walks the exported surface by reflection and also
-       rejects types from Ulid and DeviceId. -->
+       multi-targets the same three TFMs, so the reference is unconditional. Its RSA surface takes a
+       parsed RsaKey handle rather than PEM text, which LicensingKey imports once per key and holds.
+       It is an implementation detail: no Enigma.Core.* or Org.BouncyCastle.* type may reach this
+       library's public surface — guarded by PublicSurfaceIsolationTests, which walks the exported
+       surface by reflection and also rejects types from Ulid and DeviceId. -->
   <!-- Ulid: the identifier the generator issues when a LicenseRequest carries none. DeviceId: the
        machine-name + OS-version components behind DeviceIdentifier.Generate(). Both multi-target all
        three of our TFMs, so both references are unconditional; both are MIT. Like Enigma.Core they are

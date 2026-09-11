@@ -6,7 +6,12 @@
        the reference lands, not before. -->
   <!-- Library. Enigma.Core is the cryptographic engine behind every service here and is referenced on
        all three TFMs — it multi-targets exactly the same set. It brings BouncyCastle.Cryptography
-       2.7.0 transitively; neither type may appear on this library's public surface. -->
+       2.7.0 transitively; neither type may appear on this library's public surface.
+
+       2.0.0 (FEATURE-6C54) takes RSA keys as a reusable Enigma.Core RsaKey handle instead of PEM
+       strings, which is why LicensingKey parses its material once and holds it. The major bump changed
+       no dependency of Core's — still BouncyCastle 2.7.0, still System.Buffers 4.6.1 on
+       netstandard2.0 — and no key or licence file this library writes. -->
   <!-- System.Buffers (Span/Memory), System.Text.Json and PolySharp (compile-only C# polyfills) are
        the netstandard2.0-support set and are referenced ONLY under that TFM in the library csproj:
        net8.0/net10.0 get System.Text.Json from the shared framework, and referencing the package
@@ -30,7 +35,7 @@
        on netstandard2.0 it pulls Microsoft.Bcl.AsyncInterfaces 9.0.18 and
        System.Threading.Tasks.Extensions 4.5.4 (net8.0+ have both inbox). -->
   <ItemGroup>
-    <PackageVersion Include="Enigma.Core" Version="1.1.0" />
+    <PackageVersion Include="Enigma.Core" Version="2.0.0" />
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.18" />
     <PackageVersion Include="System.Buffers" Version="4.6.1" />
     <PackageVersion Include="System.Text.Json" Version="10.0.10" />
@@ -62,8 +67,10 @@
        app csproj strips it out of every non-Debug build.
 
        Enigma.Avalonia.Desktop also brings Enigma.Core (>= 1.0.0) transitively, behind its Base64 and
-       hexadecimal editors. The graph closes on the 1.1.0 pinned above for the library, so there is one
-       Enigma.Core — and one BouncyCastle.Cryptography — in the app. -->
+       hexadecimal editors. The graph closes on the 2.0.0 pinned above for the library, so there is one
+       Enigma.Core — and one BouncyCastle.Cryptography — in the app. That the control library is built
+       against 1.x is not a problem across Core's major bump: its assembly references Enigma.Core.Encoding
+       and nothing from the RSA or certificate surface, which is the only surface 2.0.0 changed. -->
   <ItemGroup>
     <PackageVersion Include="Avalonia" Version="12.1.1" />
     <PackageVersion Include="Avalonia.Desktop" Version="12.1.1" />
