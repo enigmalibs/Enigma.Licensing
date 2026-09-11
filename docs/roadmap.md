@@ -22,4 +22,4 @@
 | BUG-5147     | Centre page content at wide widths             | DONE   | docs/plan/BUG-5147.md     |
 | FEATURE-7310 | Branded desktop application icon               | DONE   | docs/plan/FEATURE-7310.md |
 | FEATURE-B086 | Remove licence features & claims               | DONE   | docs/plan/FEATURE-B086.md |
-| FEATURE-82E5 | Release v2.0.0                                 | TODO   | docs/plan/FEATURE-82E5.md |
+| FEATURE-82E5 | Release v2.0.0                                 | DONE   | docs/plan/FEATURE-82E5.md |

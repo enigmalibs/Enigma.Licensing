@@ -1,6 +1,6 @@
 # FEATURE-82E5 — Release v2.0.0
 
-**Status:** TODO
+**Status:** DONE
 **Type:** single-phase
 **Branch:** `feature/feature-82e5-release-v2`
 **Run:** feature/2026-09-11-icon-trim-release
