@@ -30,14 +30,17 @@ licence audit on file; `PHASE02` wrote the **five per-category usage guides and 
 `docs/guides/`, every snippet compiled against the real public surface rather than read; `PHASE03` the
 **packed `README.md`, `RELEASENOTES.md`, `SECURITY.md` and `<PackageReleaseNotes>`**, which is what made
 the package packable — NU5040 is gone; and `PHASE04` the **release runbook, the app's two publish
-scripts and the pack-verify pass**. **Nothing outward-facing has happened**: no tag exists, nothing is
-pushed, and `github.com/enigmalibs/Enigma.Licensing` is still to be created. `docs/RELEASE.md` is the
-checklist for all of that, and running it is the maintainer's, never an agent's.
+scripts and the pack-verify pass**. **That release then shipped**: `Enigma.Licensing` **1.0.0 is on
+nuget.org** and `github.com/enigmalibs/Enigma.Licensing` exists and is `origin`. (Earlier revisions of
+this file said the opposite — that nothing had been pushed and the repository was still to be created.
+It was true when written and `FEATURE-82E5` corrected it.) No git **tag** exists, here or on the remote,
+so the repository's convention is still the bare `X.Y.Z` that `docs/RELEASE.md` declares. That runbook
+is the checklist for a release, and running it is the maintainer's, never an agent's.
 
 **`FEATURE-6C54` moved the library onto Enigma.Core 2.0.0**, whose only breaking theme is that RSA keys
 cross Core's surface as a reusable `RsaKey` handle instead of PEM text. Nothing observable here changed:
 the two document formats are byte-identical, every algorithm and verdict behaves as before, and the
-library's version stays 1.0.0 (nothing has ever been tagged or pushed). `LicensingKey` now parses its
+library's version stayed at 1.0.0 for it. `LicensingKey` now parses its
 material **once** and holds the handle — see *Shipped* below, and never import a handle at a call site.
 
 **The trim/AOT decision that was outstanding is answered — the fix shipped.** Serialization was
@@ -52,6 +55,13 @@ what the analyzers reject. See *Shipped* below.
 of the library and the app** — five public members removed, which is a **breaking change against the
 published 1.0.0** and therefore a major release. Every licence 1.0 ever issued still validates, because a
 payload member this build does not know is ignored rather than rejected. See *Shipped* below.
+
+**`FEATURE-82E5` made that a release: the library and the app are both at 2.0.0**, with a prepended
+`RELEASENOTES.md` section, a rewritten `<PackageReleaseNotes>`, a 2.0 README callout, `SECURITY.md` on
+`2.0.x`, and **`docs/migrations/1.0.0-to-2.0.0.md`** in the Enigma.Core house shape. The package was
+packed and inspected locally and both app zips were built. **Nothing outward-facing was done**: no tag
+was created, nothing was pushed, and nothing was published to NuGet — `docs/RELEASE.md` is the
+maintainer's to run. See *Shipped* below.
 
 ## What this is
 
@@ -537,8 +547,10 @@ source file and no test changed; the one code edit is a csproj comment.
 - **Both zips build and carry four entries each** — the directory, the single-file executable, `README.md`
   and `LICENSE.md`. No `.pdb`, no `.xml`, no loose assemblies. `publish.sh` (Info-ZIP) preserves the Linux
   executable bit; `publish.ps1`'s `Compress-Archive` does not, so a linux-x64 artifact built on Windows
-  needs `chmod +x` — said in the script and in the runbook. `pwsh` is not installed on this machine, so
-  the PowerShell twin has been reviewed but not executed.
+  needs `chmod +x` — said in the script and in the runbook. (At the time, `pwsh` was absent here, so the
+  PowerShell twin had been reviewed but not executed. `FEATURE-82E5` ran it: it works under **Windows
+  PowerShell 5.1**, no `pwsh` needed. `publish.sh` is now the one that cannot run on this machine —
+  Info-ZIP `zip` is not installed, and the script stops with `error: 'zip' is not installed`.)
 
 Files in place: `docs/RELEASE.md`, `scripts/publish.sh` (mode 755), `scripts/publish.ps1`. No new type,
 no new package, no new test.
@@ -664,6 +676,50 @@ two were signed, displayed and documented without anything ever deciding on them
   Definition of Done on its own.
 - **The suites shrank rather than being adapted**: 1174 cases → 1138. A test with no API left to call is
   not evidence of anything; the two that were *added* are the forward-compatibility pair above.
+
+### The 2.0.0 release (FEATURE-82E5)
+
+The library and the application both read **2.0.0**. A routine release in the `dotnet-release` sense —
+the twelve packaging properties, the packing `ItemGroup`, the licence audit and `docs/RELEASE.md` all
+landed with `FEATURE-57BC` and were not redone.
+
+- **The version was decided by a fact, not a preference.** `Enigma.Licensing` **1.0.0 is published on
+  nuget.org** (`api.nuget.org/v3-flatcontainer/enigma.licensing/index.json` answers `["1.0.0"]`), so a
+  consumer exists who can be broken and five public members are gone. That is a major bump under SemVer
+  and nothing smaller is defensible — a minor would tell a consumer an upgrade is safe when it does not
+  compile. **Check the registry, not this file, before deciding a version.**
+- **The app moved to 2.0.0 too, and that is a consequence rather than a coupling.** The two version
+  independently and always will; they land on one number here because one change broke both — the
+  generate page lost two sections, the licence card two rows, the saved profile two fields, and the icon
+  changed. `app.manifest` mirrors it by hand in the four-part form Windows requires.
+- **`docs/migrations/1.0.0-to-2.0.0.md` is the house shape**, copied from `Enigma.Core`'s: an
+  agent-consumable "prompt part" that leads with **what does not break**. That is the expensive half of a
+  consumer's uncertainty, and here it is almost everything — every issued licence, every key file, both
+  formats, all six schemes, the check order, the verdicts and the error contract. It also says what *not*
+  to do: no adapter restoring `HasFeature`, and no smuggling entitlements through `ProductId`, which
+  unlike the removed fields **is** validated.
+- **Dependencies: one bump taken, three holds recorded.** `System.Text.Json` 10.0.10 → 10.0.12
+  (netstandard2.0 only) and the app's `Microsoft.Extensions.Hosting`/`Logging.*` 10.0.10 → 10.0.12 —
+  servicing patches that move nothing else. Held: the **DI abstractions 9.x floor** (raising it is the
+  consumer-wide drag the floor exists to prevent), the **version-coupled Avalonia set** at 12.1.1 (only
+  the four Avalonia packages moved, and `Enigma.Avalonia.Desktop` 1.0.0 pins 12.1.1 itself — a release
+  dev is the wrong place to absorb a control-library regression), and **xunit.v3 3.2.2** (a *major*
+  test-framework bump, test-only, zero release value, real risk of a red suite).
+- **The snippet gate ran and is the reason the guides can be trusted.** All 40 C# fences across the
+  README and the five guides were extracted and compiled against the real 2.0.0 surface in a scratch
+  project — 35 executable ones compiled clean, and the 5 signature listings were diffed against their
+  real declarations. **Zero mismatches.** There is no compile harness for doc snippets in this repo, so
+  this pass is the only thing that catches drift; run it whenever a guide or the README quick start moves.
+- **Pack-verify passed every assertion** against a real `.nupkg` in the session scratchpad: version
+  2.0.0, the `.nupkg` and nothing else, README (6,282 bytes) and LICENSE embedded, the nuspec's
+  `version`/`title`/`license type="file"`/`readme`/`releaseNotes`, an XML doc per TFM with **no stale
+  `License.Features`/`HasFeature` entry**, `System.Buffers` + `System.Text.Json` 10.0.12 on netstandard2.0
+  only, PolySharp and `Microsoft.NET.ILLink.Tasks` absent, and an assembly version of 2.0.0.0. The
+  directory was deleted.
+- **Nothing outward-facing happened, and that boundary held.** No tag, no push, no `dotnet nuget push`.
+  The two permitted local actions were pack-verify and the publish scripts, and both were run.
+
+Files in place: `docs/migrations/1.0.0-to-2.0.0.md`. No new type, no new test, no new package.
 
 ## Architecture & conventions
 
@@ -871,6 +927,7 @@ docs/guides/generating-licenses.md   LicenseRequest, the half-open window, wildc
 docs/guides/validating-licenses.md   The check order, the seven failures, ILicenseStore, AddEnigmaLicensing()
 docs/guides/device-identity.md       DeviceIdentifier, its weaknesses, and plugging in another scheme
 docs/RELEASE.md                      The release runbook — pre-flight, merge, tag, pack, push, app zips
+docs/migrations/1.0.0-to-2.0.0.md    Migrating a consumer off Features/Claims; an agent-consumable prompt part
 scripts/publish.sh                   Builds the app's distribution zips; version asked of MSBuild
 scripts/publish.ps1                  Its PowerShell twin — same artifacts, cut a release from either OS
 ```
@@ -888,7 +945,7 @@ There is **no CI workflow**, deliberately — consistent with every sibling Enig
 - **Currently pinned** in `Directory.Packages.props` — only what the code actually references:
   `Enigma.Core` 2.0.0, `Microsoft.Extensions.DependencyInjection.Abstractions` 9.0.18, `Ulid` 1.4.1 and
   `DeviceId` 6.11.0 (all three TFMs), `PolySharp` 1.16.0,
-  `System.Buffers` 4.6.1 and `System.Text.Json` 10.0.10 (those three **netstandard2.0 only** in the
+  `System.Buffers` 4.6.1 and `System.Text.Json` 10.0.12 (those three **netstandard2.0 only** in the
   library), `xunit.v3` 3.2.2, `coverlet.collector` 10.0.1,
   `Microsoft.Extensions.DependencyInjection` 9.0.18 (tests only — the concrete container, so the
   registration tests can build a real `ServiceProvider`). Referencing `System.Buffers` or
@@ -917,15 +974,16 @@ There is **no CI workflow**, deliberately — consistent with every sibling Enig
   precedent): NuGet resolves a package to the highest floor in the graph, so a high floor here would drag
   a consumer's whole `Microsoft.Extensions.*` set forward. On netstandard2.0 alone it pulls
   `Microsoft.Bcl.AsyncInterfaces` and `System.Threading.Tasks.Extensions` — both inbox on net8.0+, both
-  MIT, and both cleared by the same audit. (Both resolve above their floors, to 10.0.10 and 4.6.3, since
-  System.Text.Json 10.0.10 asks for more on that leg.)
+  MIT, and both cleared by the same audit. (Both resolve above their floors, since System.Text.Json asks
+  for more on that leg.) `FEATURE-82E5` reaffirmed the 9.x floor rather than taking the 10.0.12 that was
+  available — raising it is exactly the consumer-wide drag the floor exists to avoid.
 - **Runtime dependencies, final for the library: Enigma.Core, Microsoft.Extensions.DependencyInjection.Abstractions,
   Ulid and DeviceId everywhere; System.Buffers and System.Text.Json on netstandard2.0 only.** Nothing
   further is expected — `FEATURE-03A9` is complete, and `FEATURE-57BC-PHASE01` added no package (its
   source generator ships inside System.Text.Json / the SDK, and `IsAotCompatible`'s
   `Microsoft.NET.ILLink.Tasks` is an auto-referenced build task that never reaches the nuspec).
 - **The desktop app's pins landed with `FEATURE-179C-PHASE01`** and are expected to be its whole set:
-  `Microsoft.Extensions.Hosting` / `.Logging.Console` / `.Logging.Debug` 10.0.10, and the
+  `Microsoft.Extensions.Hosting` / `.Logging.Console` / `.Logging.Debug` 10.0.12, and the
   **version-coupled** group — `Avalonia`, `Avalonia.Desktop`, `Avalonia.Themes.Fluent`,
   `Avalonia.Fonts.Inter` 12.1.1, `AvaloniaUI.DiagnosticsSupport` 2.2.3, `CommunityToolkit.Mvvm` 8.4.2,
   `Enigma.Avalonia.Desktop` 1.0.0 and `Enigma.Icons` / `.Phosphor` / `.Avalonia` 1.0.0. **Bump that group
@@ -1092,8 +1150,10 @@ MTP coverage needs `Microsoft.Testing.Extensions.CodeCoverage`. Measure before t
   `FEATURE-57BC-PHASE01`, per the `dotnet-release` skill — all twelve properties plus the packing
   `ItemGroup`. `<PackageReleaseNotes>` followed in `PHASE03`, written beside `RELEASENOTES.md` so the
   two cannot disagree; keep them in step. There are deliberately **no symbol properties** and no
-  `GeneratePackageOnBuild`: a release ships one `.nupkg`, packed explicitly. The library and the app version independently, in their own csproj —
-  there is no solution-wide `<Version>`; both read 1.0.0.
+  `GeneratePackageOnBuild`: a release ships one `.nupkg`, packed explicitly. The library and the app
+  version independently, in their own csproj — there is no solution-wide `<Version>` — but `FEATURE-82E5`
+  put both on **2.0.0**, because one change broke both. `app.manifest`'s four-part `assemblyIdentity` is
+  kept in step with the app's `<Version>` by hand; nothing derives one from the other.
 - **Docs stay honest.** When a phase lands, update this file, `docs/roadmap.md` and the plan status
   in the same unit of work; do not leave "planned" markers on shipped code.
 
@@ -1114,6 +1174,7 @@ written. Commits are left to the maintainer.
 The original sequence was a hard dependency chain, and all of it has landed: `FEATURE-2FE8` (repo
 skeleton) → `FEATURE-03A9` (licensing core library, 4 phases) → `FEATURE-179C` (desktop app, 4 phases)
 → `FEATURE-57BC` (v1.0.0 release, 4 phases). Everything after it is maintenance on a feature-done
-repository, so the items are independent and single-phase: `FEATURE-6C54` (Enigma.Core 2.0.0) and
-`BUG-5147` (centre the pages' content). Read `docs/roadmap.md` for what is still `TODO`; a new work
-item means allocating an ID, planning it, and appending its row.
+repository, so the items are independent and single-phase: `FEATURE-6C54` (Enigma.Core 2.0.0),
+`BUG-5147` (centre the pages' content), `FEATURE-7310` (the app icon), `FEATURE-B086` (remove features
+and claims) and `FEATURE-82E5` (the v2.0.0 release). Read `docs/roadmap.md` for what is still `TODO`;
+a new work item means allocating an ID, planning it, and appending its row.
