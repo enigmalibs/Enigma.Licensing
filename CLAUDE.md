@@ -21,7 +21,8 @@ doc, comment or summary that describes a planned type as if it already ships.
 hosting, theme and settings**, `PHASE02` the **keys page and the four application service seams**,
 `PHASE03` the **generate page and licence profiles**, and `PHASE04` the **validate page**. There are no
 placeholder pages left — the app generates real key pairs, signs real licences with them and reaches real
-verdicts about them.
+verdicts about them. `BUG-5147` then centred their content: the page frame was pinned left, so a wide
+window put everything against the rail with dead space beside it.
 
 **`FEATURE-57BC` (the v1.0.0 release) is complete too, and with it every planned work item.** `PHASE01`
 gave the library its **packaging metadata**, made it **trim- and AOT-safe**, and put its third-party
@@ -592,6 +593,25 @@ contract. The migration instructions live in the sibling repo at
 Types in place: no new type and no new package. `LicensingKey` gained `RsaHandle` (internal), and
 `tests/.../Keys/KeyHandleTests.cs` is the phase's only new file.
 
+### The page frame is centred, not left-aligned (BUG-5147)
+
+`StackPanel.page` in `App.axaml` is the desktop app's page frame — `Margin 24`, `Spacing 16`,
+`MaxWidth 880` — and every page is a `ScrollViewer` over one of them. Its `HorizontalAlignment` was
+`Left`, which left a growing band of dead space on the right of a wide or maximised window. It is now
+**`Stretch`**, and that is the whole change: one setter, no view file touched.
+
+- **`Stretch` is what centres it; `Center` would shrink it.** Avalonia arranges a `Stretch`-aligned
+  element at the width it was offered and then centres it when a constraint stopped it from filling that
+  width, which is exactly the wanted behaviour — full width below 880, centred above it. A
+  `Center`-aligned element is arranged at its *desired* width instead, so a stack of settings cards
+  would centre and visibly narrow at once. Measured with the real numbers (880 cap, child wanting 400):
+  at 1400 available, `Stretch` → x=260 w=880 while `Center` → x=500 w=400; at 670 available (the
+  narrowest content area this window allows), `Stretch` → x=0 w=670. **Do not "correct" it to
+  `Center`** — the reason is in a comment beside the setter.
+- **No layout test came with it.** The desktop suite stands up no Avalonia platform on purpose, so the
+  evidence is a throwaway probe (measure + arrange, `Bounds` read back), the zero-warning build and an
+  `AVLN` count of 0. A headless-Avalonia dependency for one setter would cost more than it guards.
+
 ## Architecture & conventions
 
 These hold across the whole library, and everything here **ships** — `FEATURE-03A9` is complete, so no
@@ -727,7 +747,7 @@ src/Enigma.Licensing/                The library
   Keys/LicensingKeyPair.cs           Both halves, as generation returns them
 src/Enigma.Licensing.Desktop/        The Avalonia issuer app (net10.0)
   Program.cs                         Synchronous entry point; the host is built in App, not here
-  App.axaml(.cs)                     Theme merge + style classes; owns the IHost and the startup wiring
+  App.axaml(.cs)                     Theme merge + style classes (the centred page frame); owns the IHost
   app.manifest                       Per-monitor-v2 DPI awareness (version bumped at release time)
   Assets/appicon.ico                 Placeholder branding, reused from the predecessor app
   Hosting/EnigmaAvaloniaServiceCollectionExtensions.cs   AddEnigmaAvaloniaDesktop() — the library's six
