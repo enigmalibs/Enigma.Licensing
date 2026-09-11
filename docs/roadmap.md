@@ -19,4 +19,4 @@
 | - PHASE03    | README, release notes & community files        | DONE   | (in FEATURE-57BC.md)      |
 | - PHASE04    | Release runbook, publish scripts & pack-verify | DONE   | (in FEATURE-57BC.md)      |
 | FEATURE-6C54 | Enigma.Core 2.0 migration                      | DONE   | docs/plan/FEATURE-6C54.md |
-| BUG-5147     | Centre page content at wide widths             | TODO   | docs/plan/BUG-5147.md     |
+| BUG-5147     | Centre page content at wide widths             | DONE   | docs/plan/BUG-5147.md     |

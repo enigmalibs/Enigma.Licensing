@@ -36,11 +36,22 @@
          deliberately absent — the library's dictionary restyles those two by overriding FluentTheme's own
          TextControl* / ComboBox* keys, so hand-styling them here would only fight it. -->
 
+    <!-- Every page is a ScrollViewer over one of these, so this style is the page frame: the measure it
+         is read at, and where that measure sits in the area beside the rail.
+
+         Stretch, NOT Center, is what centres it. Avalonia arranges a Stretch-aligned element at the
+         width it was offered, and then centres it when a constraint — here MaxWidth — stopped it from
+         filling that width; below 880 there is nothing to centre and the page simply takes the room it
+         has. Center is arranged at the element's DESIRED width instead, which for a stack of settings
+         cards is whatever the widest card asked for: the page would centre and visibly narrow at the
+         same time, cards no longer reaching the 880 they are laid out for. Measured (880 cap, child
+         wanting 400): at 1400 available, Stretch gives x=260 w=880 and Center gives x=500 w=400; at 670
+         available, Stretch gives x=0 w=670. -->
     <Style Selector="StackPanel.page">
       <Setter Property="Margin" Value="24" />
       <Setter Property="Spacing" Value="16" />
       <Setter Property="MaxWidth" Value="880" />
-      <Setter Property="HorizontalAlignment" Value="Left" />
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
     </Style>
 
     <Style Selector="TextBlock.h1">
