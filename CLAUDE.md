@@ -656,7 +656,8 @@ the whole of the change: the two places that point at it — `<ApplicationIcon>`
   identical to the matching `png/enigma-licensing-<N>.png`; the 16–32 px frames are drawn from a
   simplified master. PNG frames replace the DIBs above because every sibling app's title bar renders them
   fine — the DIB choice was caution about an unknown, not an observed failure. A redesign happens in the
-  Branding repository, never here.
+  Branding repository, never here. The about-box bitmap now exists too: `FEATURE-CF21` ships
+  `Assets/app-256.png`, the `.ico`'s 256 px frame byte for byte.
 
 ### Feature flags and claims are gone (FEATURE-B086)
 
@@ -730,6 +731,34 @@ landed with `FEATURE-57BC` and were not redone.
   The two permitted local actions were pack-verify and the publish scripts, and both were run.
 
 Files in place: `docs/migrations/1.0.0-to-2.0.0.md`. No new type, no new test, no new package.
+
+### The uniform About dialog (FEATURE-CF21)
+
+The About dialog every Enigma application shows, copied from **Enigma.GitClient's** (the family
+reference: `Views/Dialogs/AboutView.axaml`, `AboutViewModel`, `AboutDialogService`). It opens from an
+**About Enigma Licensing** button at the end of the settings page's About expander, as GitClient's settings
+page opens its own; the expander's three rows stay, since the library version is this app's alone.
+
+- **The markup is the reference's, line for line** — a 380 px column: the 96 px `app-256.png`, the name (18
+  SemiBold, `EnigmaForegroundBrush`), `Version X.Y.Z` (secondary brush), `Build <sha>` (11 px, tertiary
+  brush, the sha selectable, the line hidden when the build recorded no revision), the copyright (11 px,
+  hidden when empty). The dialog has no title and no icon and one default **Close**. **Change the
+  reference first, then copy** — a local tweak is how the family drifts apart.
+- **`AppInfo.ParseVersion(informational, fallback)`** splits `X.Y.Z+<sha>` into the version and the sha cut
+  to seven characters, falling back to the 3-part assembly version and then `0.0.0`
+  (`AppInfo.UnknownVersion`). It never throws. `AppVersion` and `LibraryVersion` go through it, so the
+  settings rows still show no build metadata; `BuildSha` and `Copyright` (the `AssemblyCopyright` that
+  `Directory.Build.props` stamps) are new.
+- **The view is not unit-tested.** The suite stands up no Avalonia platform, and the view's `Image` needs
+  one; `AboutViewModelTests` and `AppInfoTests` pin what it binds to and which lines it hides, and the
+  dialog itself was checked in the running app (screenshot in `docs/done/FEATURE-CF21.md`).
+- **The host's size bounds are not restated**: `HostDialog` sets them once in `MainWindow.axaml`, and no
+  dialog here changes them. A dialog that ever does must restate all of them — `ShowAsync` resets content
+  and buttons, never the sizes.
+
+Types in place: `IAboutDialogService` / `AboutDialogService` (`internal sealed`, `AddSingleton`),
+`AboutViewModel` (built fresh per showing, not registered), `AboutView`, and
+`SettingsViewModel.OpenAboutCommand`.
 
 ## Architecture & conventions
 
@@ -869,11 +898,12 @@ src/Enigma.Licensing.Desktop/        The Avalonia issuer app (net10.0)
   App.axaml(.cs)                     Theme merge + style classes (the centred page frame); owns the IHost
   app.manifest                       Per-monitor-v2 DPI awareness (version bumped at release time)
   Assets/appicon.ico                 A certificate and seal on a dark square; 10 PNG frames, 16→256 (FEATURE-1ECA)
+  Assets/app-256.png                 The icon's 256 px frame, for the About dialog (FEATURE-CF21)
   Hosting/EnigmaAvaloniaServiceCollectionExtensions.cs   AddEnigmaAvaloniaDesktop() — the library's six
   Hosting/ServiceCollectionExtensions.cs                 AddEnigmaLicensingDesktop() — + AddEnigmaLicensing()
   Properties/AssemblyInfo.cs         InternalsVisibleTo for the app's test assembly (PHASE02 — see Shipped)
   Resources/AppIcons.cs              The four Phosphor rail outlines, resolved once each
-  Resources/AppInfo.cs               Title, project URL, app & library versions read from the assemblies
+  Resources/AppInfo.cs               Title, project URL, versions, build sha & copyright read from the assemblies
   Services/IThemeService.cs          Repaint the app — the seam that keeps Avalonia out of the ViewModels
   Services/ThemeService.cs           The only place that assigns RequestedThemeVariant
   Services/IFileDialogService.cs     Ask where to write a document, or which one to open — paths, not handles
@@ -887,13 +917,16 @@ src/Enigma.Licensing.Desktop/        The Avalonia issuer app (net10.0)
   Services/BusyOverlayService.cs     Builds the progress card in code, from the app's own style classes
   Services/IClipboardService.cs      Copy a short value — the fingerprint, above all
   Services/ClipboardService.cs       Via the running app's main window; no clipboard is a log line
+  Services/IAboutDialogService.cs    Show the About dialog
+  Services/AboutDialogService.cs     AboutView in the content dialog: no title, no icon, one Close (FEATURE-CF21)
   Settings/AppTheme.cs               System / Light / Dark
   Settings/AppSettings.cs            The preference file's shape + its formatVersion
   Settings/IAppSettingsStore.cs      Load/Save — neither may throw into the application
   Settings/AppSettingsStore.cs       ApplicationData/Enigma.Licensing/settings.json, temp-then-move
   ViewModels/MainWindowViewModel.cs  The rail: three workflows + settings in the footer; navigates nowhere
   ViewModels/ThemeOption.cs          One appearance choice: an AppTheme and the words offering it
-  ViewModels/SettingsViewModel.cs    Apply-and-persist exactly once, plus the about section
+  ViewModels/SettingsViewModel.cs    Apply-and-persist exactly once, plus the about section and its dialog
+  ViewModels/AboutViewModel.cs       Name, version, build sha, copyright — and which lines to hide
   ViewModels/SignatureAlgorithmOption.cs   One picker entry: scheme, wire label, description, is-RSA
   ViewModels/LicenseVerdictSeverity.cs     Success / Warning / Error — the app's own, not InfoBarSeverity
   ViewModels/LicenseVerdict.cs             The failure → headline/explanation/severity table + the class flags
@@ -902,7 +935,8 @@ src/Enigma.Licensing.Desktop/        The Avalonia issuer app (net10.0)
   ViewModels/GenerateLicenseViewModel.cs   The generate page: the form, the lists, profiles, sign, result
   ViewModels/ValidateLicenseViewModel.cs   The validate page: two files, two expectations, verdict + cards
   Views/MainWindow.axaml(.cs)        NavigationView + the three service hosts, last in the root Panel
-  Views/SettingsView.axaml(.cs)      Appearance SettingsCard + the About expander
+  Views/SettingsView.axaml(.cs)      Appearance SettingsCard + the About expander and its dialog button
+  Views/AboutView.axaml(.cs)         The family's About dialog content, Enigma.GitClient's markup
   Views/GenerateKeysView.axaml(.cs)        Three SettingsCardExpanders, the accent button, the result card
   Views/GenerateLicenseView.axaml(.cs)     A profile SettingsCard + six expanders, the button, the result card
   Views/ValidateLicenseView.axaml(.cs)     Two expanders, the button, then the verdict / document / licence cards
