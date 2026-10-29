@@ -282,7 +282,8 @@ with Settings pinned to the footer), a complete Settings page, and three placeho
 `PHASE02`–`PHASE04` fill in. **The library is nothing but a dependency of it** — the app consumes the same
 public surface a third-party consumer would.
 
-- **`App` owns the `IHost`, `Program.cs` owns nothing.** `Program` stays synchronous —
+- **`App` owns the `IHost`, `Program.cs` owns nothing** but the process-wide exception hooks
+  (`FEATURE-5443`, installed before anything else). `Program` stays synchronous —
   `BuildAvaloniaApp().StartWithClassicDesktopLifetime` — and the host is built in
   `OnFrameworkInitializationCompleted`, started (never *run*: Avalonia's lifetime runs the app), and
   stopped from `desktop.Exit`. The window is **resolved** from the container rather than constructed,
@@ -760,6 +761,39 @@ Types in place: `IAboutDialogService` / `AboutDialogService` (`internal sealed`,
 `AboutViewModel` (built fresh per showing, not registered), `AboutView`, and
 `SettingsViewModel.OpenAboutCommand`.
 
+### The unhandled-exception safety net (FEATURE-5443)
+
+Every exception nothing else caught is logged with where it was caught, and the application keeps
+running. Enigma.GitClient's net, the family reference, scaled to one window and no credentials: static
+hooks → a reporter → a policy. `PHASE01` shipped the hooks, the policy and the logging; the error dialog is
+`PHASE02`'s, and until it lands a queued batch is opened and closed at once, so the repeat window already
+applies to the log.
+
+- **Three hooks, installed in two places.** `Program.Main` calls `UnhandledExceptionHooks.Install()` first
+  (`AppDomain.UnhandledException`, `TaskScheduler.UnobservedTaskException`); `App` calls
+  `InstallDispatcher()` first thing in `OnFrameworkInitializationCompleted` (`Dispatcher.UIThread.UnhandledException`,
+  marked handled — that is what keeps a throwing command from ending the process). An `AppDomain` exception
+  ends the process whatever a handler does: it is logged, nothing more.
+- **Reports before the net exists are kept, at most 32, and traced**; `App` attaches the reporter as soon as
+  the host is built, which hands them over in order, and detaches it on exit before the host stops, so a late
+  report never logs through a stopped container.
+- **The reporter logs at once, on the reporting thread** (that thread may be about to end the process), and
+  decides on the UI thread. The UI thread is a constructor delegate (`Action<Action> post`, `internal`), so the
+  tests run it in place — the suite still stands up no platform.
+- **The policy** (`UnhandledErrorPolicy`, `TimeProvider`-driven): a cancellation whose own token was cancelled,
+  or any cancellation during shutdown, is not an error (debug line only); the same exception object offered
+  twice is ignored; an error while a batch is open is merged into it; the same error (type + message + stack)
+  within a minute of its batch closing is suppressed. The details are type, message, stack and inner
+  exceptions to depth 8 — never `Exception.Data`, never `ToString()`. GitClient's credential redaction is left
+  out on purpose: a password here is a `char[]` that never enters a message.
+- **A command that throws synchronously from a UI Automation invoke surfaces to the automation client, not to
+  the dispatcher** — found during the manual check. Real clicks and async commands (every command here) go
+  through the dispatcher.
+
+Types in place: `UnhandledErrorSource`, `UnhandledErrorDecision`, `UnhandledErrorBatch`,
+`UnhandledErrorPolicy`, `UnhandledExceptionHooks`, and `IUnhandledErrorReporter` / `UnhandledErrorReporter`
+(`internal sealed`, `AddSingleton`, with `TimeProvider.System` via `TryAddSingleton`).
+
 ## Architecture & conventions
 
 These hold across the whole library, and everything here **ships** — `FEATURE-03A9` is complete, so no
@@ -894,7 +928,7 @@ src/Enigma.Licensing/                The library
   Keys/LicensingKey.cs               A parsed key + CurrentFormat; material internal, RSA handle parsed once
   Keys/LicensingKeyPair.cs           Both halves, as generation returns them
 src/Enigma.Licensing.Desktop/        The Avalonia issuer app (net10.0)
-  Program.cs                         Synchronous entry point; the host is built in App, not here
+  Program.cs                         Synchronous entry point; installs the exception hooks, the host is built in App
   App.axaml(.cs)                     Theme merge + style classes (the centred page frame); owns the IHost
   app.manifest                       Per-monitor-v2 DPI awareness (version bumped at release time)
   Assets/appicon.ico                 A certificate and seal on a dark square; 10 PNG frames, 16→256 (FEATURE-1ECA);
@@ -920,6 +954,10 @@ src/Enigma.Licensing.Desktop/        The Avalonia issuer app (net10.0)
   Services/ClipboardService.cs       Via the running app's main window; no clipboard is a log line
   Services/IAboutDialogService.cs    Show the About dialog
   Services/AboutDialogService.cs     AboutView in the content dialog: no title, no icon, one Close (FEATURE-CF21)
+  Services/UnhandledExceptionHooks.cs   The process-wide hooks; early reports kept (≤ 32) until the net attaches
+  Services/UnhandledErrorPolicy.cs   Source/decision enums, the batch, and what is ignored, merged or suppressed
+  Services/IUnhandledErrorReporter.cs   The safety net: report from any thread, shutdown started
+  Services/UnhandledErrorReporter.cs    Logs at once, decides on the UI thread
   Settings/AppTheme.cs               System / Light / Dark
   Settings/AppSettings.cs            The preference file's shape + its formatVersion
   Settings/IAppSettingsStore.cs      Load/Save — neither may throw into the application
@@ -957,7 +995,7 @@ tests/Enigma.Licensing.Desktop.UnitTests/   xUnit v3 test suite for the app (net
   Hosting/                           The container wiring: what is registered, and with which lifetime
   Settings/                          The preference file and every way it can be useless
   Models/                            The profile file: its shape on disk, and every way one can be unreadable
-  Services/                          NotificationService's timing, BusyOverlayService's card (needs friend access)
+  Services/                          NotificationService's timing, BusyOverlayService's card, the safety net (friend access)
   LicenseSamples.cs                  Licences and verdicts built by hand — no cryptography, nothing that moves
   AppIconTests.cs                    app.ico beside the executable, byte for byte the asset (FEATURE-0156)
   ViewModels/                        The rail, the appearance selector, and the three real pages + their round-trips

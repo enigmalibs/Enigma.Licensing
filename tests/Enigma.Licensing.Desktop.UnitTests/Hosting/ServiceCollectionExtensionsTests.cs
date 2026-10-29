@@ -8,6 +8,7 @@ using Enigma.Licensing.Desktop.Views;
 using Enigma.Licensing.Keys;
 using Microsoft.Extensions.DependencyInjection;
 using AppAboutDialog = Enigma.Licensing.Desktop.Services.IAboutDialogService;
+using AppErrorReporter = Enigma.Licensing.Desktop.Services.IUnhandledErrorReporter;
 using AppBusyOverlay = Enigma.Licensing.Desktop.Services.IBusyOverlayService;
 using AppClipboard = Enigma.Licensing.Desktop.Services.IClipboardService;
 using AppFileDialogs = Enigma.Licensing.Desktop.Services.IFileDialogService;
@@ -104,6 +105,8 @@ public sealed class ServiceCollectionExtensionsTests
     [InlineData(typeof(AppBusyOverlay), ServiceLifetime.Singleton)]
     [InlineData(typeof(AppClipboard), ServiceLifetime.Singleton)]
     [InlineData(typeof(AppAboutDialog), ServiceLifetime.Singleton)]
+    [InlineData(typeof(AppErrorReporter), ServiceLifetime.Singleton)]
+    [InlineData(typeof(TimeProvider), ServiceLifetime.Singleton)]
     [InlineData(typeof(MainWindow), ServiceLifetime.Singleton)]
     [InlineData(typeof(MainWindowViewModel), ServiceLifetime.Singleton)]
     public void AddEnigmaLicensingDesktop_RegistersTheShellsService_WithTheRightLifetime(Type service, ServiceLifetime lifetime)
@@ -195,6 +198,7 @@ public sealed class ServiceCollectionExtensionsTests
         Assert.NotNull(provider.GetRequiredService<AppBusyOverlay>());
         Assert.NotNull(provider.GetRequiredService<AppClipboard>());
         Assert.NotNull(provider.GetRequiredService<AppAboutDialog>());
+        Assert.NotNull(provider.GetRequiredService<AppErrorReporter>());
     }
 
     [Fact]

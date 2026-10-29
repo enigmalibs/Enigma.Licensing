@@ -1,6 +1,6 @@
 # FEATURE-5443 — Catch unhandled exceptions
 
-**Status:** TODO
+**Status:** IN PROGRESS
 **Type:** multi-phase (2 phases, one branch per phase: `feature/feature-5443-phaseNN-<slug>`)
 **Branch:** `feature/feature-5443-phase01-error-hooks`, `feature/feature-5443-phase02-error-dialog`
 **Run:** feature/2026-10-29-uniform-enigma-apps
@@ -45,7 +45,7 @@ Enigma.GitClient's (`Services/UnhandledExceptionHooks.cs`, `UnhandledErrorPolicy
 
 ## PHASE01 — Hooks, policy and logging
 
-**Status:** TODO
+**Status:** DONE
 
 ### Steps
 
