@@ -257,8 +257,9 @@ documented.
 - **`Microsoft.Extensions.DependencyInjection.Abstractions` is the one dependency deliberately visible
   on the public surface**, since the extension takes and returns `IServiceCollection`. It earns the
   exception by being a contract package: abstractions only, and already present in any app doing DI. The
-  floor is 9.x, matching Enigma.DataEncryption — NuGet resolves to the highest floor in the graph, so a
-  high floor here would drag a consumer's whole `Microsoft.Extensions.*` set forward.
+  floor was 9.x, matching Enigma.DataEncryption — NuGet resolves to the highest floor in the graph, so a
+  high floor drags a consumer's whole `Microsoft.Extensions.*` set forward. `FEATURE-9083` raised it to
+  10.x once 8.x and 9.x were weeks from leaving support (see *Target frameworks & dependencies*).
 - **The guard test has two arms, because a namespace rule is not enough.** `PublicSurfaceIsolationTests`
   walks every exported type's base types, interfaces, method returns and parameters, constructor
   parameters and fields (unwrapping arrays, by-refs and generic arguments). The first arm rejects the
@@ -275,8 +276,8 @@ otherwise — this phase's other half was the XML-doc and API review pass, which
 
 ### Desktop app shell, hosting, theme & settings (FEATURE-179C-PHASE01)
 
-`src/Enigma.Licensing.Desktop` — an Avalonia 12.1.1 app on **Enigma.Avalonia.Desktop 1.0.0**, net10.0
-only, following the Enigma.HardCopy structure. It runs: a navigation rail (Keys / Generate / Validate,
+`src/Enigma.Licensing.Desktop` — an Avalonia 12.1.1 app on **Enigma.Avalonia.Desktop 1.0.0** (12.1.4 on
+1.3.0 since `FEATURE-9083`), net10.0 only, following the Enigma.HardCopy structure. It runs: a navigation rail (Keys / Generate / Validate,
 with Settings pinned to the footer), a complete Settings page, and three placeholder pages that
 `PHASE02`–`PHASE04` fill in. **The library is nothing but a dependency of it** — the app consumes the same
 public surface a third-party consumer would.
@@ -947,21 +948,21 @@ There is **no CI workflow**, deliberately — consistent with every sibling Enig
   its test project are **net10.0** only — an application, not a package, so nothing is gained by reaching
   back.
 - **Currently pinned** in `Directory.Packages.props` — only what the code actually references:
-  `Enigma.Core` 2.0.0, `Microsoft.Extensions.DependencyInjection.Abstractions` 9.0.18, `Ulid` 1.4.1 and
-  `DeviceId` 6.11.0 (all three TFMs), `PolySharp` 1.16.0,
-  `System.Buffers` 4.6.1 and `System.Text.Json` 10.0.12 (those three **netstandard2.0 only** in the
-  library), `xunit.v3` 3.2.2, `coverlet.collector` 10.0.1,
-  `Microsoft.Extensions.DependencyInjection` 9.0.18 (tests only — the concrete container, so the
+  `Enigma.Core` 2.0.0, `Microsoft.Extensions.DependencyInjection.Abstractions` 10.0.14, `Ulid` 1.4.1 and
+  `DeviceId` 6.11.0 (both TFMs), `PolySharp` 1.16.0,
+  `System.Buffers` 4.6.1 and `System.Text.Json` 10.0.14 (those three **netstandard2.0 only** in the
+  library), `xunit.v3` 4.0.2, `coverlet.collector` 10.1.0,
+  `Microsoft.Extensions.DependencyInjection` 10.0.14 (tests only — the concrete container, so the
   registration tests can build a real `ServiceProvider`). Referencing `System.Buffers` or
-  `System.Text.Json` on net8.0+ raises
+  `System.Text.Json` on net10.0 raises
   NU1510 and fails the zero-warning build — both are framework-provided there, and the library's JSON
   usage stays inside what System.Text.Json 8.0 supports. PolySharp (compile-only, `PrivateAssets=all`)
   is what makes `init`/`required` members and the nullable-analysis attributes work on netstandard2.0.
-- **Enigma.Core is referenced unconditionally**: it multi-targets exactly the same three TFMs, and its
+- **Enigma.Core is referenced unconditionally**: it multi-targets both of our TFMs, and its
   netstandard2.0 dependency group asks for `System.Buffers` 4.6.1 — the version already pinned — so the
   graph closes with no duplicate. It brings `BouncyCastle.Cryptography` 2.7.0 transitively; neither may
   reach this library's public surface.
-- **Ulid and DeviceId are referenced unconditionally too** (both MIT, both multi-target the same three
+- **Ulid and DeviceId are referenced unconditionally too** (both MIT, both multi-target both of our
   TFMs). Ulid mints the identifier the generator stamps when a request carries none — sortable by issue
   time, unlike a GUID; on netstandard2.0 it asks for `System.Memory` and
   `System.Runtime.CompilerServices.Unsafe`, which the graph already closes over. DeviceId backs
@@ -974,24 +975,27 @@ There is **no CI workflow**, deliberately — consistent with every sibling Enig
   is the **only** dependency whose types are allowed on the public surface — `AddEnigmaLicensing()` takes
   and returns `IServiceCollection`. Abstractions only, never the concrete container: a library registers
   services, it does not build the provider. It is not part of any shared framework, so unlike
-  System.Text.Json it raises no NU1510 on net8.0+. The **9.x floor is deliberate** (Enigma.DataEncryption
-  precedent): NuGet resolves a package to the highest floor in the graph, so a high floor here would drag
-  a consumer's whole `Microsoft.Extensions.*` set forward. On netstandard2.0 alone it pulls
-  `Microsoft.Bcl.AsyncInterfaces` and `System.Threading.Tasks.Extensions` — both inbox on net8.0+, both
-  MIT, and both cleared by the same audit. (Both resolve above their floors, since System.Text.Json asks
-  for more on that leg.) `FEATURE-82E5` reaffirmed the 9.x floor rather than taking the 10.0.12 that was
-  available — raising it is exactly the consumer-wide drag the floor exists to avoid.
+  System.Text.Json it raises no NU1510 on net10.0. **The floor is 10.x, and that is a decision**: NuGet
+  resolves a package to the highest floor in the graph, so this floor sets the oldest
+  `Microsoft.Extensions.*` line a consumer can stay on. It was 9.x (Enigma.DataEncryption precedent), and
+  `FEATURE-82E5` reaffirmed that rather than drag consumers forward. `FEATURE-9083` raised it to 10.0.14
+  because the 8.x and 9.x lines leave support with .NET 8 and .NET 9 on 2026-11-10 — 10.x is the only
+  supported line left, for .NET Framework consumers of the netstandard2.0 build too — and the spec asked
+  for the latest packages. Raising a dependency floor breaks no API. On netstandard2.0 alone it pulls
+  `Microsoft.Bcl.AsyncInterfaces` 10.0.14 and `System.Threading.Tasks.Extensions` 4.6.3 — both inbox on
+  net10.0, both MIT.
 - **Runtime dependencies, final for the library: Enigma.Core, Microsoft.Extensions.DependencyInjection.Abstractions,
   Ulid and DeviceId everywhere; System.Buffers and System.Text.Json on netstandard2.0 only.** Nothing
   further is expected — `FEATURE-03A9` is complete, and `FEATURE-57BC-PHASE01` added no package (its
   source generator ships inside System.Text.Json / the SDK, and `IsAotCompatible`'s
   `Microsoft.NET.ILLink.Tasks` is an auto-referenced build task that never reaches the nuspec).
 - **The desktop app's pins landed with `FEATURE-179C-PHASE01`** and are expected to be its whole set:
-  `Microsoft.Extensions.Hosting` / `.Logging.Console` / `.Logging.Debug` 10.0.12, and the
+  `Microsoft.Extensions.Hosting` / `.Logging.Console` / `.Logging.Debug` 10.0.14, and the
   **version-coupled** group — `Avalonia`, `Avalonia.Desktop`, `Avalonia.Themes.Fluent`,
-  `Avalonia.Fonts.Inter` 12.1.1, `AvaloniaUI.DiagnosticsSupport` 2.2.3, `CommunityToolkit.Mvvm` 8.4.2,
-  `Enigma.Avalonia.Desktop` 1.0.0 and `Enigma.Icons` / `.Phosphor` / `.Avalonia` 1.0.0. **Bump that group
-  as a unit, never one package at a time**: the control library pins Avalonia 12.1.1 and
+  `Avalonia.Fonts.Inter` 12.1.4, `AvaloniaUI.DiagnosticsSupport` 2.2.3, `CommunityToolkit.Mvvm` 8.4.2,
+  `Enigma.Avalonia.Desktop` 1.3.0 and `Enigma.Icons` / `.Phosphor` / `.Avalonia` 1.0.0 (`FEATURE-9083`
+  moved the set from 12.1.1 / 1.0.0). **Bump that group
+  as a unit, never one package at a time**: the control library pins Avalonia 12.1.4 and
   CommunityToolkit.Mvvm 8.4.2 itself, and Enigma.Icons.Avalonia needs Avalonia ≥ 12.1.0. Five of them
   (Avalonia, Avalonia.Themes.Fluent, CommunityToolkit.Mvvm, Enigma.Icons, Enigma.Icons.Phosphor) would
   arrive transitively and are pinned explicitly anyway, house convention, so the version is visible rather

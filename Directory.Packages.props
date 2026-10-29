@@ -18,7 +18,8 @@
        there would raise NU1510 and fail the zero-warnings build. The 10.0.x line is the one whose own
        netstandard2.0 dependency set already matches the System.Buffers 4.6.1 pinned here — which is
        also the version Enigma.Core's own netstandard2.0 dependency group asks for; FEATURE-82E5 took
-       the 10.0.10 → 10.0.12 servicing patch, which moves nothing else in the graph. -->
+       the 10.0.10 → 10.0.12 servicing patch and FEATURE-9083 10.0.12 → 10.0.14, neither of which
+       moves anything else in the graph. -->
   <!-- Ulid 1.4.1 (MIT) mints the identifier the generator stamps on a license when the caller supplies
        none: lexicographically sortable by creation time, unlike a GUID, so a directory listing of
        issued licenses is in issue order. On netstandard2.0 it asks for System.Memory and
@@ -27,19 +28,21 @@
        machine name and OS version live there; the DeviceId.Windows/.Linux/.Mac packages exist for
        hardware-bound components this library deliberately does not use. It multi-targets both of ours,
        and on netstandard2.0 alone it pulls Microsoft.DotNet.PlatformAbstractions 3.1.6. -->
-  <!-- Microsoft.Extensions.DependencyInjection.Abstractions 9.0.18 (MIT) is what AddEnigmaLicensing()
+  <!-- Microsoft.Extensions.DependencyInjection.Abstractions 10.0.14 (MIT) is what AddEnigmaLicensing()
        extends, and the ONLY dependency whose types are allowed on this library's public surface — the
-       extension method takes and returns IServiceCollection, which is the whole point of it. The floor
-       is deliberately low: 9.x, matching Enigma.DataEncryption, because NuGet resolves a package
-       reference to the highest floor any project in the graph asks for, so a high floor here would drag
-       an application's whole Microsoft.Extensions.* set forward. It multi-targets both of ours;
-       on netstandard2.0 it pulls Microsoft.Bcl.AsyncInterfaces 9.0.18 and
-       System.Threading.Tasks.Extensions 4.5.4 (net10.0 has both inbox). -->
+       extension method takes and returns IServiceCollection, which is the whole point of it. NuGet
+       resolves a package reference to the highest floor any project in the graph asks for, so this floor
+       sets the oldest Microsoft.Extensions.* line a consumer can stay on. It was 9.x until FEATURE-9083,
+       precisely to avoid dragging an application's set forward; it is 10.x now because the 8.x and 9.x
+       lines leave support with .NET 8 and .NET 9 on 2026-11-10, which leaves 10.x the only supported
+       line, on .NET Framework (netstandard2.0) as much as on .NET. It multi-targets both of ours; on
+       netstandard2.0 it pulls Microsoft.Bcl.AsyncInterfaces and System.Threading.Tasks.Extensions
+       (net10.0 has both inbox). -->
   <ItemGroup>
     <PackageVersion Include="Enigma.Core" Version="2.0.0" />
-    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.18" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.14" />
     <PackageVersion Include="System.Buffers" Version="4.6.1" />
-    <PackageVersion Include="System.Text.Json" Version="10.0.12" />
+    <PackageVersion Include="System.Text.Json" Version="10.0.14" />
     <PackageVersion Include="PolySharp" Version="1.16.0" />
     <PackageVersion Include="Ulid" Version="1.4.1" />
     <PackageVersion Include="DeviceId" Version="6.11.0" />
@@ -50,15 +53,16 @@
        terminal launch, Debug for an attached debugger. The app writes no log files (validated decision),
        so no file sink is pinned. -->
   <ItemGroup>
-    <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.12" />
-    <PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="10.0.12" />
-    <PackageVersion Include="Microsoft.Extensions.Logging.Debug" Version="10.0.12" />
+    <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.14" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="10.0.14" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Debug" Version="10.0.14" />
   </ItemGroup>
   <!-- Desktop (Avalonia) — a version-coupled ecosystem: Avalonia, the Fluent theme, the Inter fonts and
        the diagnostics support are bumped TOGETHER, never one package at a time, because mixing versions
-       within the set breaks the build. Enigma.Avalonia.Desktop 1.0.0 belongs to the same unit: it pins
-       Avalonia 12.1.1, Avalonia.Themes.Fluent 12.1.1 and CommunityToolkit.Mvvm 8.4.2 — exactly the
+       within the set breaks the build. Enigma.Avalonia.Desktop 1.3.0 belongs to the same unit: it pins
+       Avalonia 12.1.4, Avalonia.Themes.Fluent 12.1.4 and CommunityToolkit.Mvvm 8.4.2 — exactly the
        versions below — and Enigma.Icons.Avalonia needs Avalonia >= 12.1.0 for the same reason.
+       FEATURE-9083 moved the set as a whole, 12.1.1 / 1.0.0 → 12.1.4 / 1.3.0.
 
        Avalonia, Avalonia.Themes.Fluent and CommunityToolkit.Mvvm arrive transitively through the control
        library, and Enigma.Icons / Enigma.Icons.Phosphor through Enigma.Icons.Avalonia; all five are pinned
@@ -73,13 +77,13 @@
        against 1.x is not a problem across Core's major bump: its assembly references Enigma.Core.Encoding
        and nothing from the RSA or certificate surface, which is the only surface 2.0.0 changed. -->
   <ItemGroup>
-    <PackageVersion Include="Avalonia" Version="12.1.1" />
-    <PackageVersion Include="Avalonia.Desktop" Version="12.1.1" />
-    <PackageVersion Include="Avalonia.Themes.Fluent" Version="12.1.1" />
-    <PackageVersion Include="Avalonia.Fonts.Inter" Version="12.1.1" />
+    <PackageVersion Include="Avalonia" Version="12.1.4" />
+    <PackageVersion Include="Avalonia.Desktop" Version="12.1.4" />
+    <PackageVersion Include="Avalonia.Themes.Fluent" Version="12.1.4" />
+    <PackageVersion Include="Avalonia.Fonts.Inter" Version="12.1.4" />
     <PackageVersion Include="AvaloniaUI.DiagnosticsSupport" Version="2.2.3" />
     <PackageVersion Include="CommunityToolkit.Mvvm" Version="8.4.2" />
-    <PackageVersion Include="Enigma.Avalonia.Desktop" Version="1.0.0" />
+    <PackageVersion Include="Enigma.Avalonia.Desktop" Version="1.3.0" />
     <PackageVersion Include="Enigma.Icons" Version="1.0.0" />
     <PackageVersion Include="Enigma.Icons.Phosphor" Version="1.0.0" />
     <PackageVersion Include="Enigma.Icons.Avalonia" Version="1.0.0" />
@@ -89,8 +93,8 @@
        ServiceProvider and assert what AddEnigmaLicensing() registered. Same version as the abstractions
        the library pins, so the test graph resolves to exactly the floor a consumer would get. -->
   <ItemGroup>
-    <PackageVersion Include="xunit.v3" Version="3.2.2" />
-    <PackageVersion Include="coverlet.collector" Version="10.0.1" />
-    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="9.0.18" />
+    <PackageVersion Include="xunit.v3" Version="4.0.2" />
+    <PackageVersion Include="coverlet.collector" Version="10.1.0" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.14" />
   </ItemGroup>
 </Project>
