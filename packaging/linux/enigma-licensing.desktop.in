@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Version=1.5
+Name=Enigma Licensing
+GenericName=Enigma Licensing
+Comment=Generate signing keys, sign software licences and validate them
+Exec=@EXEC@
+Icon=enigma-licensing
+Terminal=false
+Categories=Development;Security;
+Keywords=licence;license;key;signature;signing;rsa;ml-dsa;
+StartupNotify=true
+StartupWMClass=Enigma.Licensing.Desktop
