@@ -12,9 +12,9 @@ application, and ask the validator for a verdict. Signing is classical RSA or po
 and all cryptography comes from [Enigma.Core](https://www.nuget.org/packages/Enigma.Core) — whose
 types never reach this library's public surface.
 
-> **What's new in 2.0** — a breaking release: feature flags and claims are removed, since validation
-> never read them. Every license issued by 1.0 still validates, and no key or license file changes.
-> See [RELEASENOTES.md](RELEASENOTES.md).
+> **What's new in 2.1** — no API change: the net8.0 target is dropped ahead of .NET 8's end of
+> support (a .NET 8 or 9 app uses the .NET Standard 2.0 build), and the DI abstractions floor rises
+> to 10.x. See [RELEASENOTES.md](RELEASENOTES.md).
 
 ## Features
 

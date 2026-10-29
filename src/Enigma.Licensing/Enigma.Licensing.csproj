@@ -21,11 +21,12 @@
   <!-- NuGet packaging metadata (FEATURE-57BC-PHASE01). Deliberately absent until release time, per the
        house release workflow. The version lives here rather than in Directory.Build.props because the
        library and the desktop app version independently; FEATURE-82E5 took it to 2.0.0, a major bump
-       because five public members were removed from the published 1.0.0. Keep <PackageReleaseNotes>
+       because five public members were removed from the published 1.0.0, and FEATURE-B6BB to 2.1.0 (net8.0
+       target dropped, dependency floors raised, no API change). Keep <PackageReleaseNotes>
        and RELEASENOTES.md in step — the notes below mirror that file's top section. -->
   <PropertyGroup>
     <PackageId>Enigma.Licensing</PackageId>
-    <Version>2.0.0</Version>
+    <Version>2.1.0</Version>
     <Title>Enigma.Licensing — .NET License Generation &amp; Validation</Title>
     <Description>Generate, sign and validate software licenses in .NET. Licenses are signed JSON envelopes (enigma-license/1) whose signature covers the stored payload bytes exactly — there is no canonicalization step to get wrong — and they can be signed with classical RSA (SHA-256/384/512) or post-quantum ML-DSA (FIPS 204, parameter sets 44/65/87). Key pairs are generated, stored and optionally password-encrypted (Argon2id + AES-256-GCM) in a single enigma-key/1 format. A license carries a product identifier, an owner, an optional validity window and an optional device binding; validation is a verdict rather than an exception, reports the first failing check, and supports anchored wildcard product identifiers. All cryptography comes from Enigma.Core.</Description>
     <PackageTags>license licensing signature rsa ml-dsa fips-204 post-quantum dotnet</PackageTags>
@@ -40,7 +41,7 @@
          deliberately no symbol properties (IncludeSymbols / SymbolPackageFormat / PublishRepositoryUrl /
          EmbedUntrackedSources) and no GeneratePackageOnBuild: a release ships one .nupkg, packed
          explicitly by the release step rather than by every local build. -->
-    <PackageReleaseNotes>Breaking release. Feature flags and claims are removed: License.Features, License.Claims, License.HasFeature, LicenseRequest.Features and LicenseRequest.Claims are deleted outright — validation never read them, so they were signed, shown and documented with nothing ever deciding from them. Nothing else moved: both document formats are byte-identical, all six signature schemes behave as before, the check order and its seven failure reasons are unchanged, the error contract is unchanged, and the target frameworks are unchanged. Every licence issued by 1.0.0 still validates, and no file needs reissuing or converting — a payload member this build does not know is ignored rather than rejected, and nothing re-serializes a licence in order to check one. The break is therefore a compile error with no runtime component. System.Text.Json moves 10.0.10 to 10.0.12 on netstandard2.0 only. See docs/migrations/1.0.0-to-2.0.0.md for the migration, and RELEASENOTES.md for the full details.</PackageReleaseNotes>
+    <PackageReleaseNotes>A maintenance release with no API change. The net8.0 target is dropped, because .NET 8 leaves support on 2026-11-10: the package now targets netstandard2.0 and net10.0, and a .NET 8 or .NET 9 application resolves the netstandard2.0 build, which has the same public surface. That build carries no trim/AOT annotations, so an application published with trimming or native AOT on .NET 8 or 9 may see trim warnings it did not before. Microsoft.Extensions.DependencyInjection.Abstractions rises from 9.0.18 to 10.0.14, the only supported line once .NET 8 and 9 leave support, and System.Text.Json moves 10.0.12 to 10.0.14 on netstandard2.0. Both document formats, all six signature schemes, the check order, the verdicts and the error contract are unchanged, and every licence and key file ever written still reads. See RELEASENOTES.md for the full details.</PackageReleaseNotes>
   </PropertyGroup>
   <!-- What actually puts the two files in the package — PackageReadmeFile and PackageLicenseFile only
        name them. Both live at the repository root, two levels above this project. -->
