@@ -73,6 +73,7 @@ public static class ServiceCollectionExtensions
             services.AddSingleton<INotificationService, NotificationService>();
             services.AddSingleton<IBusyOverlayService, BusyOverlayService>();
             services.AddSingleton<IClipboardService, ClipboardService>();
+            services.AddSingleton<IAboutDialogService, AboutDialogService>();
 
             // Pages: the view fresh each time, the ViewModel kept.
             services.AddTransient<GenerateKeysView>();

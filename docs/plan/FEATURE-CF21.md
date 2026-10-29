@@ -1,6 +1,6 @@
 # FEATURE-CF21 — Uniform About dialog
 
-**Status:** TODO
+**Status:** DONE
 **Type:** single-phase
 **Branch:** `feature/feature-cf21-uniform-about-dialog`
 **Run:** feature/2026-10-29-uniform-enigma-apps
