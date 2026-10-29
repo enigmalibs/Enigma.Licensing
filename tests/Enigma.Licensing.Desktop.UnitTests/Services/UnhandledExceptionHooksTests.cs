@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Enigma.Avalonia.Desktop.Controls.ContentDialog;
 using Enigma.Licensing.Desktop.Services;
 
 namespace Enigma.Licensing.Desktop.UnitTests.Services;
@@ -107,6 +108,10 @@ public sealed class UnhandledExceptionHooksTests : IDisposable
         public void Report(Exception exception, UnhandledErrorSource source) => _reports.Add((exception, source));
 
         public void ShutdownStarted()
+        {
+        }
+
+        public void RegisterHost(ContentDialog host)
         {
         }
     }

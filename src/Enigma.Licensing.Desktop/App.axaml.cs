@@ -78,6 +78,10 @@ public partial class App : Application
             services.GetRequiredService<IFileDialogService>().SetStorageProvider(window.StorageProvider);
             services.GetRequiredService<IFolderDialogService>().SetStorageProvider(window.StorageProvider);
 
+            // The safety net learns the same dialog host — after the content dialog service has it, since the
+            // net shows through that service. An error caught before this point is shown now.
+            errors.RegisterHost(window.HostDialog);
+
             ApplyStoredTheme(services);
             StartNavigation(services);
 
