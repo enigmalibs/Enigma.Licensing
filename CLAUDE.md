@@ -33,9 +33,9 @@ the package packable — NU5040 is gone; and `PHASE04` the **release runbook, th
 scripts and the pack-verify pass**. **That release then shipped**: `Enigma.Licensing` **1.0.0 is on
 nuget.org** and `github.com/enigmalibs/Enigma.Licensing` exists and is `origin`. (Earlier revisions of
 this file said the opposite — that nothing had been pushed and the repository was still to be created.
-It was true when written and `FEATURE-82E5` corrected it.) No git **tag** exists, here or on the remote,
-so the repository's convention is still the bare `X.Y.Z` that `docs/RELEASE.md` declares. That runbook
-is the checklist for a release, and running it is the maintainer's, never an agent's.
+It was true when written and `FEATURE-82E5` corrected it.) The tag convention is the bare `X.Y.Z` that
+`docs/RELEASE.md` declares — `2.0.0` is the first tag (see below). That runbook is the checklist for a
+release, and running it is the maintainer's, never an agent's.
 
 **`FEATURE-6C54` moved the library onto Enigma.Core 2.0.0**, whose only breaking theme is that RSA keys
 cross Core's surface as a reusable `RsaKey` handle instead of PEM text. Nothing observable here changed:
@@ -59,9 +59,18 @@ payload member this build does not know is ignored rather than rejected. See *Sh
 **`FEATURE-82E5` made that a release: the library and the app are both at 2.0.0**, with a prepended
 `RELEASENOTES.md` section, a rewritten `<PackageReleaseNotes>`, a 2.0 README callout, `SECURITY.md` on
 `2.0.x`, and **`docs/migrations/1.0.0-to-2.0.0.md`** in the Enigma.Core house shape. The package was
-packed and inspected locally and both app zips were built. **Nothing outward-facing was done**: no tag
-was created, nothing was pushed, and nothing was published to NuGet — `docs/RELEASE.md` is the
-maintainer's to run. See *Shipped* below.
+packed and inspected locally and both app zips were built; nothing outward-facing was done by the
+agent. **The maintainer then shipped it**: `2.0.0` is tagged and `Enigma.Licensing` 2.0.0 is on nuget.org
+(the registry answered `["1.0.0","2.0.0"]` on 2026-10-29). (Earlier revisions of this paragraph said
+nothing was tagged or published — true when written, corrected by `FEATURE-B6BB`.) See *Shipped* below.
+
+**The `feature/2026-10-29-uniform-enigma-apps` run brought the app onto the uniform Enigma baseline and
+prepared 2.1.0 of both** (`FEATURE-A0EB` … `FEATURE-B6BB`): the library dropped `net8.0` and raised its
+DI-abstractions floor to 10.x with no API change; the app gained the family's icon, About dialog and
+unhandled-exception net, `app.ico` beside the executable, Linux install/uninstall scripts and the
+Windows/Linux publish scripts. **2.1.0 is prepared, not released**: versions, notes, README, SECURITY and
+the runbook say 2.1.0, the package was pack-verified and both zips built and smoke-tested locally, and no
+tag, push or NuGet publish happened. See *Shipped* below.
 
 ## What this is
 
@@ -842,6 +851,27 @@ directory, and exit with `dotnet`'s code.
   and `docs/RELEASE.md` §7 tell them apart; neither replaces the other.
 - `publish.bat` is CRLF (`.gitattributes`); `publish.sh` is LF and `100755`.
 
+### The 2.1.0 release, prepared (FEATURE-B6BB)
+
+Library and app both read **2.1.0** (`app.manifest` 2.1.0.0), with a prepended `RELEASENOTES.md` section, a
+rewritten `<PackageReleaseNotes>`, the 2.1 README callout and `SECURITY.md` on `2.1.x`. A minor under the
+user's `x.y.z → x.(y+1).0` rule, and defensible under SemVer: no API moved, and the netstandard2.0 build
+covers every runtime the dropped net8.0 did.
+
+- **The notes say the two consumer-visible effects of dropping net8.0** — a .NET 8/9 app now gets the
+  netstandard2.0 build, which carries no trim/AOT annotations (possible new trim warnings) and brings
+  `System.Text.Json`/`System.Buffers`/`Microsoft.Bcl.AsyncInterfaces` as packages — and why the DI floor rose.
+- **Gates run**: clean Release build (0 warnings, 0 `AVLN`), 783/783 tests; the snippet gate (35 executable
+  fences compiled against the real 2.1.0 project, 5 signature listings diffed — 0 mismatches); pack-verify
+  in the scratchpad (one `.nupkg`, README 6,860 bytes and LICENSE embedded, nuspec fields, dependency groups
+  `net10.0` + `.NETStandard2.0` only, no PolySharp, no ILLink, no stale `Features` doc); the licence audit
+  re-read on the new graph (all MIT but the unchanged `Microsoft.NETCore.Platforms`); both release zips built
+  with `scripts/publish.ps1`, five entries each, and the win-x64 one launched and reporting 2.1.0.
+- **`ExcludeFromSingleFile="true"` on the `app.ico` item** — found by the zip check: the win-x64 single-file
+  bundler had swallowed the icon into the executable, so the zip had none. Keep the attribute.
+- **Nothing outward-facing happened.** No tag, no push, no `dotnet nuget push`; `docs/RELEASE.md` is the
+  maintainer's to run.
+
 ## Architecture & conventions
 
 These hold across the whole library, and everything here **ships** — `FEATURE-03A9` is complete, so no
@@ -1287,7 +1317,8 @@ MTP coverage needs `Microsoft.Testing.Extensions.CodeCoverage`. Measure before t
   two cannot disagree; keep them in step. There are deliberately **no symbol properties** and no
   `GeneratePackageOnBuild`: a release ships one `.nupkg`, packed explicitly. The library and the app
   version independently, in their own csproj — there is no solution-wide `<Version>` — but `FEATURE-82E5`
-  put both on **2.0.0**, because one change broke both. `app.manifest`'s four-part `assemblyIdentity` is
+  put both on **2.0.0**, because one change broke both, and `FEATURE-B6BB` both on **2.1.0**, because one
+  run changed both. `app.manifest`'s four-part `assemblyIdentity` is
   kept in step with the app's `<Version>` by hand; nothing derives one from the other.
 - **Docs stay honest.** When a phase lands, update this file, `docs/roadmap.md` and the plan status
   in the same unit of work; do not leave "planned" markers on shipped code.
@@ -1311,5 +1342,8 @@ skeleton) → `FEATURE-03A9` (licensing core library, 4 phases) → `FEATURE-179
 → `FEATURE-57BC` (v1.0.0 release, 4 phases). Everything after it is maintenance on a feature-done
 repository, so the items are independent and single-phase: `FEATURE-6C54` (Enigma.Core 2.0.0),
 `BUG-5147` (centre the pages' content), `FEATURE-7310` (the app icon), `FEATURE-B086` (remove features
-and claims) and `FEATURE-82E5` (the v2.0.0 release). Read `docs/roadmap.md` for what is still `TODO`;
+and claims) and `FEATURE-82E5` (the v2.0.0 release); then the uniform-baseline run — `FEATURE-A0EB` (drop
+net8.0), `FEATURE-9083` (packages), `FEATURE-1ECA` (new icon), `FEATURE-CF21` (About dialog), `FEATURE-0156`
+(`app.ico` in the output), `FEATURE-5443` (error net, 2 phases), `FEATURE-F319` (Linux install),
+`FEATURE-11BB` (publish scripts) and `FEATURE-B6BB` (the 2.1.0 release). Read `docs/roadmap.md` for what is still `TODO`;
 a new work item means allocating an ID, planning it, and appending its row.

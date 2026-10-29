@@ -1,6 +1,6 @@
 # FEATURE-B6BB — Release 2.1.0
 
-**Status:** TODO
+**Status:** DONE
 **Type:** single-phase
 **Branch:** `feature/feature-b6bb-release-2-1-0`
 **Run:** feature/2026-10-29-uniform-enigma-apps

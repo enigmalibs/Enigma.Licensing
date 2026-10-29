@@ -139,7 +139,8 @@ something the executable disagrees with. `artifacts/` is gitignored; the zips ar
 GitHub release rather than committed.
 
 - [ ] Both zips built and their names carry the app's `<Version>`.
-- [ ] Each zip expands into its own directory containing the executable, `README.md` and `LICENSE.md`.
+- [ ] Each zip expands into its own directory containing the executable, `app.ico`, `README.md` and
+      `LICENSE.md` (`app.ico` since 2.1.0, kept loose in the single-file publish by `ExcludeFromSingleFile`).
 - [ ] The linux-x64 binary is executable after unzipping — `Compress-Archive` (the PowerShell script)
       does not carry the Unix executable bit, so an artifact built on Windows needs `chmod +x` after
       extraction. `scripts/publish.sh` uses Info-ZIP, which preserves it.
