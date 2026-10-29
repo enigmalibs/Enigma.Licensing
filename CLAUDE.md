@@ -897,7 +897,8 @@ src/Enigma.Licensing.Desktop/        The Avalonia issuer app (net10.0)
   Program.cs                         Synchronous entry point; the host is built in App, not here
   App.axaml(.cs)                     Theme merge + style classes (the centred page frame); owns the IHost
   app.manifest                       Per-monitor-v2 DPI awareness (version bumped at release time)
-  Assets/appicon.ico                 A certificate and seal on a dark square; 10 PNG frames, 16→256 (FEATURE-1ECA)
+  Assets/appicon.ico                 A certificate and seal on a dark square; 10 PNG frames, 16→256 (FEATURE-1ECA);
+                                     also copied beside the executable as app.ico (FEATURE-0156)
   Assets/app-256.png                 The icon's 256 px frame, for the About dialog (FEATURE-CF21)
   Hosting/EnigmaAvaloniaServiceCollectionExtensions.cs   AddEnigmaAvaloniaDesktop() — the library's six
   Hosting/ServiceCollectionExtensions.cs                 AddEnigmaLicensingDesktop() — + AddEnigmaLicensing()
@@ -958,6 +959,7 @@ tests/Enigma.Licensing.Desktop.UnitTests/   xUnit v3 test suite for the app (net
   Models/                            The profile file: its shape on disk, and every way one can be unreadable
   Services/                          NotificationService's timing, BusyOverlayService's card (needs friend access)
   LicenseSamples.cs                  Licences and verdicts built by hand — no cryptography, nothing that moves
+  AppIconTests.cs                    app.ico beside the executable, byte for byte the asset (FEATURE-0156)
   ViewModels/                        The rail, the appearance selector, and the three real pages + their round-trips
   Resources/                         AppInfo's shape (a version, no build metadata, an https project URL)
   TestDoubles/                       The app's seams and the library ones beneath them, plus RecordingLogger
@@ -1086,7 +1088,8 @@ public member fails the build in both.
 Tests are **MTP-native**: `xunit.v3` + `coverlet.collector`, with **no** `Microsoft.NET.Test.Sdk`
 and **no** `xunit.runner.visualstudio` — both break the Microsoft Testing Platform. `Xunit` is the
 only implicit using in each test project. Test fixtures are copied by a `**/*.json` + `**/*.txt`
-`PreserveNewest` glob (library suite only — the desktop suite loads no fixture files).
+`PreserveNewest` glob (library suite only — the desktop suite has no fixture files; `AppIconTests` alone
+reads a file, the app's own `app.ico` from the output and its source asset from the tree).
 
 **The desktop suite stands up no Avalonia platform.** Anything needing one — `MainWindow`, the page
 views, and `MainWindowViewModel`'s icon factory (a Phosphor glyph becomes a `StreamGeometry`, which needs

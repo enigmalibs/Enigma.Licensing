@@ -29,6 +29,13 @@
   <ItemGroup>
     <AvaloniaResource Include="Assets/**" />
   </ItemGroup>
+  <!-- The icon as a file too, beside the executable in the build output and every publish folder, as
+       app.ico — the name every Enigma app ships it under — so shortcuts, launchers and installers can point
+       at a file instead of extracting it from the .exe. Update, not Include: the SDK's default None glob
+       already holds the file, and it stays an AvaloniaResource for the window and the About dialog. -->
+  <ItemGroup>
+    <None Update="Assets/appicon.ico" CopyToOutputDirectory="PreserveNewest" TargetPath="app.ico" />
+  </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Avalonia" />
     <PackageReference Include="Avalonia.Desktop" />

@@ -27,7 +27,7 @@
 | FEATURE-9083 | Update NuGet packages                          | DONE   | docs/plan/FEATURE-9083.md |
 | FEATURE-1ECA | New application icon                           | DONE   | docs/plan/FEATURE-1ECA.md |
 | FEATURE-CF21 | Uniform About dialog                           | DONE   | docs/plan/FEATURE-CF21.md |
-| FEATURE-0156 | App icon in the output directory               | TODO   | docs/plan/FEATURE-0156.md |
+| FEATURE-0156 | App icon in the output directory               | DONE   | docs/plan/FEATURE-0156.md |
 | FEATURE-5443 | Catch unhandled exceptions                     | TODO   | docs/plan/FEATURE-5443.md |
 | - PHASE01    | Hooks, policy and logging                      | TODO   | (in FEATURE-5443.md)      |
 | - PHASE02    | The error dialog                               | TODO   | (in FEATURE-5443.md)      |
