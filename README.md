@@ -57,7 +57,8 @@ application published with `PublishAot` or with reflection-based JSON turned off
 dotnet add package Enigma.Licensing
 ```
 
-Targets **.NET Standard 2.0**, **.NET 8.0** and **.NET 10.0**; built on **Enigma.Core 2.0.0**.
+Targets **.NET Standard 2.0** and **.NET 10.0** (a .NET 8 or 9 application uses the .NET Standard 2.0
+build); built on **Enigma.Core 2.0.0**.
 
 ## Quick start
 

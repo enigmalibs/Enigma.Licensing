@@ -25,7 +25,7 @@ Run from the repository root, on the branch that will be merged:
       `RELEASENOTES.md` — the two are written together and must not disagree.
 - [ ] README badges and the "what's new" callout reflect `X.Y.Z`. The NuGet badge tracks the published
       version by itself; only the callout is edited per release.
-- [ ] `<TargetFrameworks>` reflect the `net8.0` + `net10.0` policy (`netstandard2.0` preserved); any
+- [ ] `<TargetFrameworks>` reflect the `netstandard2.0` + `net10.0` policy (no out-of-support .NET); any
       change was proposed, confirmed and logged in `RELEASENOTES.md` *Compatibility*.
 - [ ] Guide and README snippets re-verified against the public surface if either was touched
       (there is no compile harness for doc snippets — see `docs/guides/`).
@@ -84,7 +84,7 @@ dependency floors:
 | Target framework | Dependencies |
 |---|---|
 | `netstandard2.0` | Enigma.Core 2.0.0 · Microsoft.Extensions.DependencyInjection.Abstractions 9.0.18 · Ulid 1.4.1 · DeviceId 6.11.0 · System.Buffers 4.6.1 · System.Text.Json 10.0.10 |
-| `net8.0`, `net10.0` | Enigma.Core 2.0.0 · Microsoft.Extensions.DependencyInjection.Abstractions 9.0.18 · Ulid 1.4.1 · DeviceId 6.11.0 |
+| `net10.0` | Enigma.Core 2.0.0 · Microsoft.Extensions.DependencyInjection.Abstractions 9.0.18 · Ulid 1.4.1 · DeviceId 6.11.0 |
 
 ```bash
 unzip -l ./artifacts/Enigma.Licensing.X.Y.Z.nupkg

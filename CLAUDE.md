@@ -476,7 +476,8 @@ had parked on this phase were surfaced at build time, confirmed, and the plan am
   `[RequiresUnreferencedCode]`/`[RequiresDynamicCode]` and produced 30 IL2026/IL3050 errors on the first
   attempt. Only the typed overloads are clean. `KeyFile` is new because `KeyEnvelope` and `LicenseEnvelope`
   had been sharing one options instance.
-- **`IsAotCompatible` is on for net8.0 and net10.0, off for netstandard2.0** (never published AOT). It
+- **`IsAotCompatible` is on for net10.0 (net8.0 too, until `FEATURE-A0EB` dropped it), off for
+  netstandard2.0** (never published AOT). It
   implies `IsTrimmable` and turns the trim/AOT/single-file analyzers on, so under `TreatWarningsAsErrors`
   a reflection-needing code path is a **build error**. The library builds clean under it, Enigma.Core,
   Ulid, DeviceId and `Regex` paths included. Know the limit: the analyzers see *this* assembly, so an
@@ -936,12 +937,15 @@ There is **no CI workflow**, deliberately — consistent with every sibling Enig
 
 ## Target frameworks & dependencies
 
-- The library multi-targets **`netstandard2.0;net8.0;net10.0`** — it ships as a NuGet package, and
-  the broad floor mirrors Enigma.Core so no Enigma.Core consumer is excluded (Enigma.DataEncryption
-  precedent). The reason is recorded in a csproj comment; keep it there.
-- The library's test project targets **`net8.0;net10.0`**. `netstandard2.0` is never a test TFM; its
-  polyfill surface is exercised through the `net8.0` paths. The desktop app and its test project are
-  **net10.0** only — an application, not a package, so nothing is gained by reaching back.
+- The library multi-targets **`netstandard2.0;net10.0`** — it ships as a NuGet package, and
+  netstandard2.0 keeps .NET Framework and every older runtime reachable (Enigma.DataEncryption
+  precedent). `FEATURE-A0EB` dropped `net8.0`, which leaves support on 2026-11-10; a net8.0 or net9.0
+  consumer now gets the netstandard2.0 build. The reason is recorded in a csproj comment; keep it there.
+- The library's test project targets **`net10.0`** alone. `netstandard2.0` is never a test TFM — it has
+  no runtime to execute on, so nothing in the suite runs the netstandard2.0 build (the old `net8.0` leg
+  did not either: it ran the library's own net8.0 build). The desktop app and
+  its test project are **net10.0** only — an application, not a package, so nothing is gained by reaching
+  back.
 - **Currently pinned** in `Directory.Packages.props` — only what the code actually references:
   `Enigma.Core` 2.0.0, `Microsoft.Extensions.DependencyInjection.Abstractions` 9.0.18, `Ulid` 1.4.1 and
   `DeviceId` 6.11.0 (all three TFMs), `PolySharp` 1.16.0,
@@ -1013,20 +1017,8 @@ DOTNET_ROOT=~/.dotnet dotnet test --solution Enigma.Licensing.slnx -c Release
 Note the `--solution` flag: on the .NET 10 SDK in MTP mode, `dotnet test <Solution>.slnx` is
 rejected.
 
-**This machine has no .NET 8 runtime** (`~/.dotnet/shared/Microsoft.NETCore.App` holds 10.0.10 alone),
-so the library test project's **net8.0 leg cannot launch** — the run reports `error: 1` and a non-zero
-exit code while every test that did run passed. That is a missing runtime, not a red suite: the net8.0
-binaries build clean and pass when run with a roll-forward, which is how that leg is verified here.
-
-```bash
-# The net8.0-compiled tests, executed on the installed 10.x runtime
-cd tests/Enigma.Licensing.UnitTests/bin/Release/net8.0
-DOTNET_ROOT=~/.dotnet DOTNET_ROLL_FORWARD=LatestMajor ./Enigma.Licensing.UnitTests.exe
-```
-
-Installing the .NET 8 runtime makes the plain `dotnet test` command green again. Do not "fix" this by
-dropping `net8.0` from the test project — that TFM is how the netstandard2.0 polyfill surface is
-exercised (and see `NETSDK1138` below for when dropping it *does* become the answer).
+Every test project targets net10.0 alone (`FEATURE-A0EB`), so a machine with only the .NET 10 runtime
+runs the whole suite — the net8.0 leg that needed a roll-forward recipe on such a machine is gone.
 
 Those two commands are also the release pre-flight. `scripts/publish.sh` (or its `.ps1` twin) builds
 the app's distribution zips into `artifacts/`, and everything beyond that — tag, pack, push — is
@@ -1069,8 +1061,9 @@ passed `TestContext.Current.CancellationToken`. `LicenseEnvelopeTests`, the `Key
 `private static CancellationToken Token => TestContext.Current.CancellationToken;`
 for this — copy that pattern rather than suppressing the rule.
 
-**Key generation is the expensive part of the suite** (most of the ~13 s run over 1174 cases — 876 in the
-library suite, 298 in the desktop one, which costs about two seconds): eleven RSA
+**Key generation is the expensive part of the suite** (most of the run over 712 cases — 426 in the
+library suite, which runs once now that it targets net10.0 alone, and 286 in the desktop one, which costs
+a few seconds): eleven RSA
 pairs, one at 4096 bits, plus Argon2id at 64 MiB per encrypted round-trip. Two collection fixtures exist
 so nothing generates a key it does not need to:
 
@@ -1094,13 +1087,11 @@ all, since `LicenseValidationResult` has a public constructor.
 Both follow from `TreatWarningsAsErrors=true`. Recognise them before hunting for a regression that
 isn't there:
 
-- **`NETSDK1138` — net8.0 leaves support on 2026-11-10.** The SDK's end-of-life target-framework
-  check is skipped for `Library` projects but live for `Exe`, so it applies to
-  **`Enigma.Licensing.UnitTests` alone**: it is the only project in the solution that is both an
-  executable and targets net8.0 (the library is a `Library`; the app and its test project are net10.0
-  only). The first SDK release that adds `8.0` to `_EolNetCoreTargetFrameworkVersions` turns that
-  project's net8.0 leg into an error. Fix then: drop `net8.0` there, or set `CheckEolTargetFramework`
-  to false. A comment at the property records this.
+- **`NETSDK1138` — an end-of-life target framework.** The SDK's EOL target-framework check is skipped
+  for `Library` projects but live for `Exe`, so it bites a **test project** the day the SDK lists its
+  TFM as out of support. Nothing targets an EOL runtime today — `FEATURE-A0EB` dropped `net8.0` ahead of
+  its 2026-11-10 end of support — but net10.0 will get there in turn: drop the TFM then rather than
+  setting `CheckEolTargetFramework` to false.
 - **`NU1901`–`NU1904` — NuGet auditing.** Restore warnings are errors here too, auditing defaults to
   on at `low` severity, and on the net10.0 leg it audits the **transitive** closure. A newly
   published advisory against any pinned package — or anything it drags in — fails the build with no
@@ -1133,7 +1124,7 @@ MTP coverage needs `Microsoft.Testing.Extensions.CodeCoverage`. Measure before t
   Every document goes through `EnvelopeJsonContext` or `PayloadJsonContext` by way of a
   `JsonTypeInfo<T>` from `LicenseJson`. **Never call a `JsonSerializer` overload that takes bare
   `JsonSerializerOptions`** — those are attributed `[RequiresUnreferencedCode]`/`[RequiresDynamicCode]`,
-  and `IsAotCompatible` on the net8.0+ legs turns them into build errors. A new document type needs a
+  and `IsAotCompatible` on the net10.0 leg turns them into build errors. A new document type needs a
   `[JsonSerializable]` entry on the right context and a `JsonTypeInfo` member on `LicenseJson`;
   registering it nowhere means it throws rather than falling back to reflection, which is the point.
 - **Documentation.** Every public member carries XML docs; `GenerateDocumentationFile=true` is on

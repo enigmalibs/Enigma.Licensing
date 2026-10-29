@@ -1,6 +1,6 @@
 # FEATURE-A0EB — Drop the net8.0 targets
 
-**Status:** TODO
+**Status:** DONE
 **Type:** single-phase
 **Branch:** `feature/feature-a0eb-drop-net8`
 **Run:** feature/2026-10-29-uniform-enigma-apps
