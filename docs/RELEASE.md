@@ -120,7 +120,9 @@ a secret — never commit or echo it.
 
 The app is distributed as a self-contained, single-file zip per platform — nothing needs to be
 installed on the machine that runs it. Build both from either OS; the two scripts are twins and
-produce the same artifacts:
+produce the same artifacts. (Not to be confused with `packaging/windows/publish.ps1` / `publish.bat`
+and `packaging/linux/publish.sh`: those are the plain framework-dependent ReadyToRun publish every
+Enigma app ships, into `bin/Release/net10.0/<rid>/publish/`, and produce no release artifact.)
 
 ```bash
 scripts/publish.sh                    # every RID (win-x64, linux-x64)

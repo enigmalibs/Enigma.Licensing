@@ -112,7 +112,10 @@ against a public key, reaching the same verdicts the library does. It is built o
 public surface — exactly what a third-party consumer gets — and is distributed as a self-contained
 zip for Windows and Linux rather than through NuGet. On Linux, `packaging/linux/install.sh` in the
 repository builds it and installs it for the current user — application, launcher entry and icon,
-no root needed — and `uninstall.sh` beside it removes exactly that.
+no root needed — and `uninstall.sh` beside it removes exactly that. To publish it yourself, run
+`packaging/windows/publish.ps1` (or `publish.bat`) on Windows, or `packaging/linux/publish.sh` on
+Linux: each is one `dotnet publish -c Release -r <win-x64|linux-x64> -p:PublishReadyToRun=true`,
+whose output lands in `src/Enigma.Licensing.Desktop/bin/Release/net10.0/<rid>/publish/`.
 
 ## License
 
