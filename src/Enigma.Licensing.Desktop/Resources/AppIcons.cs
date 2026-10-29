@@ -34,6 +34,9 @@ public static class AppIcons
     /// <summary>The settings page, on the navigation rail's footer.</summary>
     public static Geometry Settings { get; } = Resolve(PhosphorIcon.Gear);
 
+    /// <summary>The safety net's error dialog: something went wrong, and the application is still running.</summary>
+    public static Geometry Warning { get; } = Resolve(PhosphorIcon.Warning);
+
     /// <summary>Resolves one Phosphor glyph, at the regular weight, into its outline.</summary>
     /// <param name="icon">The icon to resolve.</param>
     /// <returns>The glyph's outline, ready for a <c>PathIcon.Data</c> or any other geometry slot.</returns>

@@ -11,6 +11,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using AppTheming = Enigma.Licensing.Desktop.Services.IThemeService;
+using IUnhandledErrorReporter = Enigma.Licensing.Desktop.Services.IUnhandledErrorReporter;
+using UnhandledExceptionHooks = Enigma.Licensing.Desktop.Services.UnhandledExceptionHooks;
 
 namespace Enigma.Licensing.Desktop;
 
@@ -35,6 +37,10 @@ public partial class App : Application
     /// <inheritdoc />
     public override void OnFrameworkInitializationCompleted()
     {
+        // First: a command or a posted callback that throws from here on is caught and logged, not the end
+        // of the process. The dispatcher is safe to touch now that the platform is set up.
+        UnhandledExceptionHooks.InstallDispatcher();
+
         HostApplicationBuilder builder = Host.CreateApplicationBuilder();
 
         // Console + Debug sinks only — this app writes no log files (validated decision).
@@ -52,6 +58,11 @@ public partial class App : Application
         {
             IServiceProvider services = _host.Services;
 
+            // The safety net, as soon as it can be built: anything caught before it was is handed over.
+            IUnhandledErrorReporter errors = services.GetRequiredService<IUnhandledErrorReporter>();
+            UnhandledExceptionHooks.Attach(errors);
+            desktop.ShutdownRequested += (_, _) => errors.ShutdownStarted();
+
             // The window is resolved rather than constructed: the library's services need this very
             // window's hosts and its storage provider, so the container has to be the one place that knows
             // which window that is.
@@ -67,11 +78,22 @@ public partial class App : Application
             services.GetRequiredService<IFileDialogService>().SetStorageProvider(window.StorageProvider);
             services.GetRequiredService<IFolderDialogService>().SetStorageProvider(window.StorageProvider);
 
+            // The safety net learns the same dialog host — after the content dialog service has it, since the
+            // net shows through that service. An error caught before this point is shown now.
+            errors.RegisterHost(window.HostDialog);
+
             ApplyStoredTheme(services);
             StartNavigation(services);
 
             desktop.MainWindow = window;
-            desktop.Exit += (_, _) => _host.StopAsync().GetAwaiter().GetResult();
+            desktop.Exit += (_, _) =>
+            {
+                // Closing: no cancellation is worth a word now, and a late report must not log through the
+                // container the host is about to stop.
+                errors.ShutdownStarted();
+                UnhandledExceptionHooks.Detach();
+                _host.StopAsync().GetAwaiter().GetResult();
+            };
         }
 
         base.OnFrameworkInitializationCompleted();

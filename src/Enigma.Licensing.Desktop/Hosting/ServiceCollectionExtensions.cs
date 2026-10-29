@@ -1,3 +1,4 @@
+using System;
 using Enigma.Licensing.Desktop.Models;
 using Enigma.Licensing.Desktop.Resources;
 using Enigma.Licensing.Desktop.Services;
@@ -5,6 +6,7 @@ using Enigma.Licensing.Desktop.Settings;
 using Enigma.Licensing.Desktop.ViewModels;
 using Enigma.Licensing.Desktop.Views;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using LibraryNavigation = Enigma.Avalonia.Desktop.Services.INavigationService;
 
@@ -73,6 +75,12 @@ public static class ServiceCollectionExtensions
             services.AddSingleton<INotificationService, NotificationService>();
             services.AddSingleton<IBusyOverlayService, BusyOverlayService>();
             services.AddSingleton<IClipboardService, ClipboardService>();
+            services.AddSingleton<IAboutDialogService, AboutDialogService>();
+
+            // The safety net every exception nothing else caught ends in. The clock is the system's; the
+            // policy asks it how long ago an error was last seen.
+            services.TryAddSingleton(TimeProvider.System);
+            services.AddSingleton<IUnhandledErrorReporter, UnhandledErrorReporter>();
 
             // Pages: the view fresh each time, the ViewModel kept.
             services.AddTransient<GenerateKeysView>();

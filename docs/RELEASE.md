@@ -25,7 +25,7 @@ Run from the repository root, on the branch that will be merged:
       `RELEASENOTES.md` — the two are written together and must not disagree.
 - [ ] README badges and the "what's new" callout reflect `X.Y.Z`. The NuGet badge tracks the published
       version by itself; only the callout is edited per release.
-- [ ] `<TargetFrameworks>` reflect the `net8.0` + `net10.0` policy (`netstandard2.0` preserved); any
+- [ ] `<TargetFrameworks>` reflect the `netstandard2.0` + `net10.0` policy (no out-of-support .NET); any
       change was proposed, confirmed and logged in `RELEASENOTES.md` *Compatibility*.
 - [ ] Guide and README snippets re-verified against the public surface if either was touched
       (there is no compile harness for doc snippets — see `docs/guides/`).
@@ -83,8 +83,8 @@ dependency floors:
 
 | Target framework | Dependencies |
 |---|---|
-| `netstandard2.0` | Enigma.Core 2.0.0 · Microsoft.Extensions.DependencyInjection.Abstractions 9.0.18 · Ulid 1.4.1 · DeviceId 6.11.0 · System.Buffers 4.6.1 · System.Text.Json 10.0.10 |
-| `net8.0`, `net10.0` | Enigma.Core 2.0.0 · Microsoft.Extensions.DependencyInjection.Abstractions 9.0.18 · Ulid 1.4.1 · DeviceId 6.11.0 |
+| `netstandard2.0` | Enigma.Core 2.0.0 · Microsoft.Extensions.DependencyInjection.Abstractions 10.0.14 · Ulid 1.4.1 · DeviceId 6.11.0 · System.Buffers 4.6.1 · System.Text.Json 10.0.14 |
+| `net10.0` | Enigma.Core 2.0.0 · Microsoft.Extensions.DependencyInjection.Abstractions 10.0.14 · Ulid 1.4.1 · DeviceId 6.11.0 |
 
 ```bash
 unzip -l ./artifacts/Enigma.Licensing.X.Y.Z.nupkg
@@ -120,7 +120,9 @@ a secret — never commit or echo it.
 
 The app is distributed as a self-contained, single-file zip per platform — nothing needs to be
 installed on the machine that runs it. Build both from either OS; the two scripts are twins and
-produce the same artifacts:
+produce the same artifacts. (Not to be confused with `packaging/windows/publish.ps1` / `publish.bat`
+and `packaging/linux/publish.sh`: those are the plain framework-dependent ReadyToRun publish every
+Enigma app ships, into `bin/Release/net10.0/<rid>/publish/`, and produce no release artifact.)
 
 ```bash
 scripts/publish.sh                    # every RID (win-x64, linux-x64)
@@ -137,7 +139,8 @@ something the executable disagrees with. `artifacts/` is gitignored; the zips ar
 GitHub release rather than committed.
 
 - [ ] Both zips built and their names carry the app's `<Version>`.
-- [ ] Each zip expands into its own directory containing the executable, `README.md` and `LICENSE.md`.
+- [ ] Each zip expands into its own directory containing the executable, `app.ico`, `README.md` and
+      `LICENSE.md` (`app.ico` since 2.1.0, kept loose in the single-file publish by `ExcludeFromSingleFile`).
 - [ ] The linux-x64 binary is executable after unzipping — `Compress-Archive` (the PowerShell script)
       does not carry the Unix executable bit, so an artifact built on Windows needs `chmod +x` after
       extraction. `scripts/publish.sh` uses Info-ZIP, which preserves it.

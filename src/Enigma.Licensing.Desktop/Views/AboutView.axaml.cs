@@ -1,0 +1,17 @@
+using Avalonia.Controls;
+
+namespace Enigma.Licensing.Desktop.Views;
+
+/// <summary>
+/// The content of the About dialog: the application's icon, what it is, which build is running, and its
+/// copyright.
+/// </summary>
+/// <remarks>
+/// Deliberately logic-free: everything shown is fixed for the life of the dialog and comes from
+/// <see cref="ViewModels.AboutViewModel"/>.
+/// </remarks>
+public partial class AboutView : UserControl
+{
+    /// <summary>Initializes a new instance of the <see cref="AboutView"/> class.</summary>
+    public AboutView() => InitializeComponent();
+}

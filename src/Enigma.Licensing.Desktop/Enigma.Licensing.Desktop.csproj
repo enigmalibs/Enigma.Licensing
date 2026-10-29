@@ -21,13 +21,24 @@
          scripts/publish.* read back with `dotnet msbuild -getProperty:Version` to name the distribution
          zips. FEATURE-82E5 took it to 2.0.0 alongside the library: the same change breaks both — the
          generate page lost two sections, the licence card two rows, and a saved profile two fields — so
-         they happen to land on one number rather than being coupled to it. -->
-    <Version>2.0.0</Version>
+         they happen to land on one number rather than being coupled to it. FEATURE-B6BB took both to
+         2.1.0 (the app: the uniform About dialog, the error net, the new icon, the packaging scripts). It is
+         also what the About dialog shows. -->
+    <Version>2.1.0</Version>
   </PropertyGroup>
   <!-- LangVersion / Nullable / ImplicitUsings / TreatWarningsAsErrors come from Directory.Build.props;
        package versions from Directory.Packages.props (Central Package Management). -->
   <ItemGroup>
     <AvaloniaResource Include="Assets/**" />
+  </ItemGroup>
+  <!-- The icon as a file too, beside the executable in the build output and every publish folder, as
+       app.ico — the name every Enigma app ships it under — so shortcuts, launchers and installers can point
+       at a file instead of extracting it from the .exe. Update, not Include: the SDK's default None glob
+       already holds the file, and it stays an AvaloniaResource for the window and the About dialog.
+       ExcludeFromSingleFile keeps it loose in a single-file publish too (scripts/publish.*): without it the
+       win-x64 bundler swallows it into the executable, and the release zip has no icon to point at. -->
+  <ItemGroup>
+    <None Update="Assets/appicon.ico" CopyToOutputDirectory="PreserveNewest" TargetPath="app.ico" ExcludeFromSingleFile="true" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Avalonia" />

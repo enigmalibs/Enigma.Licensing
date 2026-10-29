@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using Enigma.Licensing.Desktop.Resources;
 using Enigma.Licensing.Desktop.Services;
 using Enigma.Licensing.Desktop.Settings;
@@ -34,14 +35,17 @@ public sealed class SettingsViewModel : ObservableObject
     /// <summary>Initializes a new instance of the <see cref="SettingsViewModel"/> class.</summary>
     /// <param name="theme">Repaints the application when the choice changes.</param>
     /// <param name="store">Holds the choice between runs.</param>
+    /// <param name="about">Shows the About dialog the about section opens.</param>
     /// <exception cref="ArgumentNullException">Any argument is <see langword="null"/>.</exception>
-    public SettingsViewModel(IThemeService theme, IAppSettingsStore store)
+    public SettingsViewModel(IThemeService theme, IAppSettingsStore store, IAboutDialogService about)
     {
         ArgumentNullException.ThrowIfNull(theme);
         ArgumentNullException.ThrowIfNull(store);
+        ArgumentNullException.ThrowIfNull(about);
 
         _theme = theme;
         _store = store;
+        OpenAboutCommand = new AsyncRelayCommand(about.ShowAsync);
 
         // A page that throws while being built is a blank window, so a stored value outside the enum falls
         // back here as well — the store already guards its own file, this guards the contract.
@@ -60,6 +64,12 @@ public sealed class SettingsViewModel : ObservableObject
 
     /// <summary>Gets the address of the project's source, shown so it can be read and copied.</summary>
     public string ProjectUrl => AppInfo.ProjectUrl;
+
+    /// <summary>
+    /// Gets the command that opens the About dialog — the one every Enigma application shows, with the icon,
+    /// the build and the copyright.
+    /// </summary>
+    public AsyncRelayCommand OpenAboutCommand { get; }
 
     /// <summary>Gets or sets the variant the application is painted in.</summary>
     public ThemeOption SelectedTheme
