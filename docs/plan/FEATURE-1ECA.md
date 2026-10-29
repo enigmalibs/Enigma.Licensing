@@ -1,6 +1,6 @@
 # FEATURE-1ECA — New application icon
 
-**Status:** TODO
+**Status:** DONE
 **Type:** single-phase
 **Branch:** `feature/feature-1eca-new-app-icon`
 **Run:** feature/2026-10-29-uniform-enigma-apps
