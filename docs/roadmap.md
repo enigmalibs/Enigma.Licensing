@@ -32,5 +32,5 @@
 | - PHASE01    | Hooks, policy and logging                      | DONE   | (in FEATURE-5443.md)      |
 | - PHASE02    | The error dialog                               | DONE   | (in FEATURE-5443.md)      |
 | FEATURE-F319 | Linux install and uninstall scripts            | DONE   | docs/plan/FEATURE-F319.md |
-| FEATURE-11BB | Publish scripts for Windows and Linux          | TODO   | docs/plan/FEATURE-11BB.md |
+| FEATURE-11BB | Publish scripts for Windows and Linux          | DONE   | docs/plan/FEATURE-11BB.md |
 | FEATURE-B6BB | Release 2.1.0                                  | TODO   | docs/plan/FEATURE-B6BB.md |

@@ -1,6 +1,6 @@
 # FEATURE-11BB — Publish scripts for Windows and Linux
 
-**Status:** TODO
+**Status:** DONE
 **Type:** single-phase
 **Branch:** `feature/feature-11bb-publish-scripts`
 **Run:** feature/2026-10-29-uniform-enigma-apps

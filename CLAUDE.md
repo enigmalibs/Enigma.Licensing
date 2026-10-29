@@ -829,6 +829,19 @@ reference, adapted: app id `enigma-licensing`, launcher `Enigma.Licensing.Deskto
   scratch XDG tree. Native symlinks need Developer Mode there, so the run used `MSYS=winsymlinks:lnk`; a real
   Linux session (launcher entry, icon cache) is still owed.
 
+### Publish scripts for Windows and Linux (FEATURE-11BB)
+
+`packaging/windows/publish.ps1` / `publish.bat` and `packaging/linux/publish.sh` each run exactly
+`dotnet publish <src/Enigma.Licensing.Desktop> -c Release -r <win-x64|linux-x64> -p:PublishReadyToRun=true` —
+the plain publish every Enigma app ships. They take no argument, resolve the project from their own
+directory, and exit with `dotnet`'s code.
+
+- **Two publish pipelines now exist, on purpose.** `scripts/publish.*` (FEATURE-57BC) builds the **release
+  zips** — self-contained, single-file, versioned, under `artifacts/`; `packaging/**/publish.*` builds the
+  **framework-dependent ReadyToRun folder** in `bin/Release/net10.0/<rid>/publish/`. Each header, the README
+  and `docs/RELEASE.md` §7 tell them apart; neither replaces the other.
+- `publish.bat` is CRLF (`.gitattributes`); `publish.sh` is LF and `100755`.
+
 ## Architecture & conventions
 
 These hold across the whole library, and everything here **ships** — `FEATURE-03A9` is complete, so no
@@ -1053,6 +1066,9 @@ packaging/linux/install.sh           Per-user XDG install of the app: build or -
 packaging/linux/uninstall.sh         Removes exactly that; never ~/.config/Enigma.Licensing, never a user file
 packaging/linux/enigma-licensing.desktop.in   The launcher entry; @EXEC@ substituted by install.sh
 packaging/linux/icons/               enigma-licensing-<N>.png ×8, byte for byte the .ico's frames
+packaging/linux/publish.sh           dotnet publish … -r linux-x64 -p:PublishReadyToRun=true, from anywhere (FEATURE-11BB)
+packaging/windows/publish.ps1        The same for win-x64 (Windows PowerShell 5.1+)
+packaging/windows/publish.bat        Its cmd twin (CRLF), no execution policy involved
 scripts/publish.sh                   Builds the app's distribution zips; version asked of MSBuild
 scripts/publish.ps1                  Its PowerShell twin — same artifacts, cut a release from either OS
 ```
