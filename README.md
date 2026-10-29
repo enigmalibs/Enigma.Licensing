@@ -12,9 +12,9 @@ application, and ask the validator for a verdict. Signing is classical RSA or po
 and all cryptography comes from [Enigma.Core](https://www.nuget.org/packages/Enigma.Core) — whose
 types never reach this library's public surface.
 
-> **What's new in 2.0** — a breaking release: feature flags and claims are removed, since validation
-> never read them. Every license issued by 1.0 still validates, and no key or license file changes.
-> See [RELEASENOTES.md](RELEASENOTES.md).
+> **What's new in 2.1** — no API change: the net8.0 target is dropped ahead of .NET 8's end of
+> support (a .NET 8 or 9 app uses the .NET Standard 2.0 build), and the DI abstractions floor rises
+> to 10.x. See [RELEASENOTES.md](RELEASENOTES.md).
 
 ## Features
 
@@ -57,7 +57,8 @@ application published with `PublishAot` or with reflection-based JSON turned off
 dotnet add package Enigma.Licensing
 ```
 
-Targets **.NET Standard 2.0**, **.NET 8.0** and **.NET 10.0**; built on **Enigma.Core 2.0.0**.
+Targets **.NET Standard 2.0** and **.NET 10.0** (a .NET 8 or 9 application uses the .NET Standard 2.0
+build); built on **Enigma.Core 2.0.0**.
 
 ## Quick start
 
@@ -109,7 +110,12 @@ The repository also contains **Enigma.Licensing.Desktop**, an Avalonia applicati
 generates key pairs, signs licenses from a form (with saveable profiles), and validates a license
 against a public key, reaching the same verdicts the library does. It is built on the library's
 public surface — exactly what a third-party consumer gets — and is distributed as a self-contained
-zip for Windows and Linux rather than through NuGet.
+zip for Windows and Linux rather than through NuGet. On Linux, `packaging/linux/install.sh` in the
+repository builds it and installs it for the current user — application, launcher entry and icon,
+no root needed — and `uninstall.sh` beside it removes exactly that. To publish it yourself, run
+`packaging/windows/publish.ps1` (or `publish.bat`) on Windows, or `packaging/linux/publish.sh` on
+Linux: each is one `dotnet publish -c Release -r <win-x64|linux-x64> -p:PublishReadyToRun=true`,
+whose output lands in `src/Enigma.Licensing.Desktop/bin/Release/net10.0/<rid>/publish/`.
 
 ## License
 

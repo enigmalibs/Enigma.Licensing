@@ -33,9 +33,9 @@ the package packable — NU5040 is gone; and `PHASE04` the **release runbook, th
 scripts and the pack-verify pass**. **That release then shipped**: `Enigma.Licensing` **1.0.0 is on
 nuget.org** and `github.com/enigmalibs/Enigma.Licensing` exists and is `origin`. (Earlier revisions of
 this file said the opposite — that nothing had been pushed and the repository was still to be created.
-It was true when written and `FEATURE-82E5` corrected it.) No git **tag** exists, here or on the remote,
-so the repository's convention is still the bare `X.Y.Z` that `docs/RELEASE.md` declares. That runbook
-is the checklist for a release, and running it is the maintainer's, never an agent's.
+It was true when written and `FEATURE-82E5` corrected it.) The tag convention is the bare `X.Y.Z` that
+`docs/RELEASE.md` declares — `2.0.0` is the first tag (see below). That runbook is the checklist for a
+release, and running it is the maintainer's, never an agent's.
 
 **`FEATURE-6C54` moved the library onto Enigma.Core 2.0.0**, whose only breaking theme is that RSA keys
 cross Core's surface as a reusable `RsaKey` handle instead of PEM text. Nothing observable here changed:
@@ -59,9 +59,18 @@ payload member this build does not know is ignored rather than rejected. See *Sh
 **`FEATURE-82E5` made that a release: the library and the app are both at 2.0.0**, with a prepended
 `RELEASENOTES.md` section, a rewritten `<PackageReleaseNotes>`, a 2.0 README callout, `SECURITY.md` on
 `2.0.x`, and **`docs/migrations/1.0.0-to-2.0.0.md`** in the Enigma.Core house shape. The package was
-packed and inspected locally and both app zips were built. **Nothing outward-facing was done**: no tag
-was created, nothing was pushed, and nothing was published to NuGet — `docs/RELEASE.md` is the
-maintainer's to run. See *Shipped* below.
+packed and inspected locally and both app zips were built; nothing outward-facing was done by the
+agent. **The maintainer then shipped it**: `2.0.0` is tagged and `Enigma.Licensing` 2.0.0 is on nuget.org
+(the registry answered `["1.0.0","2.0.0"]` on 2026-10-29). (Earlier revisions of this paragraph said
+nothing was tagged or published — true when written, corrected by `FEATURE-B6BB`.) See *Shipped* below.
+
+**The `feature/2026-10-29-uniform-enigma-apps` run brought the app onto the uniform Enigma baseline and
+prepared 2.1.0 of both** (`FEATURE-A0EB` … `FEATURE-B6BB`): the library dropped `net8.0` and raised its
+DI-abstractions floor to 10.x with no API change; the app gained the family's icon, About dialog and
+unhandled-exception net, `app.ico` beside the executable, Linux install/uninstall scripts and the
+Windows/Linux publish scripts. **2.1.0 is prepared, not released**: versions, notes, README, SECURITY and
+the runbook say 2.1.0, the package was pack-verified and both zips built and smoke-tested locally, and no
+tag, push or NuGet publish happened. See *Shipped* below.
 
 ## What this is
 
@@ -257,8 +266,9 @@ documented.
 - **`Microsoft.Extensions.DependencyInjection.Abstractions` is the one dependency deliberately visible
   on the public surface**, since the extension takes and returns `IServiceCollection`. It earns the
   exception by being a contract package: abstractions only, and already present in any app doing DI. The
-  floor is 9.x, matching Enigma.DataEncryption — NuGet resolves to the highest floor in the graph, so a
-  high floor here would drag a consumer's whole `Microsoft.Extensions.*` set forward.
+  floor was 9.x, matching Enigma.DataEncryption — NuGet resolves to the highest floor in the graph, so a
+  high floor drags a consumer's whole `Microsoft.Extensions.*` set forward. `FEATURE-9083` raised it to
+  10.x once 8.x and 9.x were weeks from leaving support (see *Target frameworks & dependencies*).
 - **The guard test has two arms, because a namespace rule is not enough.** `PublicSurfaceIsolationTests`
   walks every exported type's base types, interfaces, method returns and parameters, constructor
   parameters and fields (unwrapping arrays, by-refs and generic arguments). The first arm rejects the
@@ -275,13 +285,14 @@ otherwise — this phase's other half was the XML-doc and API review pass, which
 
 ### Desktop app shell, hosting, theme & settings (FEATURE-179C-PHASE01)
 
-`src/Enigma.Licensing.Desktop` — an Avalonia 12.1.1 app on **Enigma.Avalonia.Desktop 1.0.0**, net10.0
-only, following the Enigma.HardCopy structure. It runs: a navigation rail (Keys / Generate / Validate,
+`src/Enigma.Licensing.Desktop` — an Avalonia 12.1.1 app on **Enigma.Avalonia.Desktop 1.0.0** (12.1.4 on
+1.3.0 since `FEATURE-9083`), net10.0 only, following the Enigma.HardCopy structure. It runs: a navigation rail (Keys / Generate / Validate,
 with Settings pinned to the footer), a complete Settings page, and three placeholder pages that
 `PHASE02`–`PHASE04` fill in. **The library is nothing but a dependency of it** — the app consumes the same
 public surface a third-party consumer would.
 
-- **`App` owns the `IHost`, `Program.cs` owns nothing.** `Program` stays synchronous —
+- **`App` owns the `IHost`, `Program.cs` owns nothing** but the process-wide exception hooks
+  (`FEATURE-5443`, installed before anything else). `Program` stays synchronous —
   `BuildAvaloniaApp().StartWithClassicDesktopLifetime` — and the host is built in
   `OnFrameworkInitializationCompleted`, started (never *run*: Avalonia's lifetime runs the app), and
   stopped from `desktop.Exit`. The window is **resolved** from the container rather than constructed,
@@ -476,7 +487,8 @@ had parked on this phase were surfaced at build time, confirmed, and the plan am
   `[RequiresUnreferencedCode]`/`[RequiresDynamicCode]` and produced 30 IL2026/IL3050 errors on the first
   attempt. Only the typed overloads are clean. `KeyFile` is new because `KeyEnvelope` and `LicenseEnvelope`
   had been sharing one options instance.
-- **`IsAotCompatible` is on for net8.0 and net10.0, off for netstandard2.0** (never published AOT). It
+- **`IsAotCompatible` is on for net10.0 (net8.0 too, until `FEATURE-A0EB` dropped it), off for
+  netstandard2.0** (never published AOT). It
   implies `IsTrimmable` and turns the trim/AOT/single-file analyzers on, so under `TreatWarningsAsErrors`
   a reflection-needing code path is a **build error**. The library builds clean under it, Enigma.Core,
   Ulid, DeviceId and `Regex` paths included. Know the limit: the analyzers see *this* assembly, so an
@@ -647,6 +659,15 @@ the whole of the change: the two places that point at it — `<ApplicationIcon>`
 - **No generator is committed and no second asset ships.** The artwork was authored once by a throwaway
   script; the geometry is recorded in `docs/done/FEATURE-7310.md`, which is what a redesign needs.
   MarkdownEditor's companion `app-256.png` exists for an about-box bitmap this app does not have.
+- **Superseded by `FEATURE-1ECA`.** The key was replaced by the family's new artwork — a certificate with
+  a green seal on a dark rounded square (LIC-A2, *Soft* palette) — generated by the sibling Branding
+  repository (`Branding/Apps/export.py`, output in `Branding/Apps/final/licensing/`). The `.ico` is that
+  tool's file byte for byte: **ten 32-bit PNG frames** (16, 20, 24, 32, 40, 48, 64, 96, 128, 256), each
+  identical to the matching `png/enigma-licensing-<N>.png`; the 16–32 px frames are drawn from a
+  simplified master. PNG frames replace the DIBs above because every sibling app's title bar renders them
+  fine — the DIB choice was caution about an unknown, not an observed failure. A redesign happens in the
+  Branding repository, never here. The about-box bitmap now exists too: `FEATURE-CF21` ships
+  `Assets/app-256.png`, the `.ico`'s 256 px frame byte for byte.
 
 ### Feature flags and claims are gone (FEATURE-B086)
 
@@ -720,6 +741,136 @@ landed with `FEATURE-57BC` and were not redone.
   The two permitted local actions were pack-verify and the publish scripts, and both were run.
 
 Files in place: `docs/migrations/1.0.0-to-2.0.0.md`. No new type, no new test, no new package.
+
+### The uniform About dialog (FEATURE-CF21)
+
+The About dialog every Enigma application shows, copied from **Enigma.GitClient's** (the family
+reference: `Views/Dialogs/AboutView.axaml`, `AboutViewModel`, `AboutDialogService`). It opens from an
+**About Enigma Licensing** button at the end of the settings page's About expander, as GitClient's settings
+page opens its own; the expander's three rows stay, since the library version is this app's alone.
+
+- **The markup is the reference's, line for line** — a 380 px column: the 96 px `app-256.png`, the name (18
+  SemiBold, `EnigmaForegroundBrush`), `Version X.Y.Z` (secondary brush), `Build <sha>` (11 px, tertiary
+  brush, the sha selectable, the line hidden when the build recorded no revision), the copyright (11 px,
+  hidden when empty). The dialog has no title and no icon and one default **Close**. **Change the
+  reference first, then copy** — a local tweak is how the family drifts apart.
+- **`AppInfo.ParseVersion(informational, fallback)`** splits `X.Y.Z+<sha>` into the version and the sha cut
+  to seven characters, falling back to the 3-part assembly version and then `0.0.0`
+  (`AppInfo.UnknownVersion`). It never throws. `AppVersion` and `LibraryVersion` go through it, so the
+  settings rows still show no build metadata; `BuildSha` and `Copyright` (the `AssemblyCopyright` that
+  `Directory.Build.props` stamps) are new.
+- **The view is not unit-tested.** The suite stands up no Avalonia platform, and the view's `Image` needs
+  one; `AboutViewModelTests` and `AppInfoTests` pin what it binds to and which lines it hides, and the
+  dialog itself was checked in the running app (screenshot in `docs/done/FEATURE-CF21.md`).
+- **The host's size bounds are not restated**: `HostDialog` sets them once in `MainWindow.axaml`, and no
+  dialog here changes them. A dialog that ever does must restate all of them — `ShowAsync` resets content
+  and buttons, never the sizes.
+
+Types in place: `IAboutDialogService` / `AboutDialogService` (`internal sealed`, `AddSingleton`),
+`AboutViewModel` (built fresh per showing, not registered), `AboutView`, and
+`SettingsViewModel.OpenAboutCommand`.
+
+### The unhandled-exception safety net (FEATURE-5443)
+
+Every exception nothing else caught is logged with where it was caught, shown in an error dialog that says
+the application is still running, and the application keeps running. Enigma.GitClient's net, the family
+reference, scaled to one window and no credentials: static hooks → a reporter → a policy → a dialog.
+`PHASE01` shipped the hooks, the policy and the logging; `PHASE02` the dialog.
+
+- **Three hooks, installed in two places.** `Program.Main` calls `UnhandledExceptionHooks.Install()` first
+  (`AppDomain.UnhandledException`, `TaskScheduler.UnobservedTaskException`); `App` calls
+  `InstallDispatcher()` first thing in `OnFrameworkInitializationCompleted` (`Dispatcher.UIThread.UnhandledException`,
+  marked handled — that is what keeps a throwing command from ending the process). An `AppDomain` exception
+  ends the process whatever a handler does: it is logged, nothing more.
+- **Reports before the net exists are kept, at most 32, and traced**; `App` attaches the reporter as soon as
+  the host is built, which hands them over in order, and detaches it on exit before the host stops, so a late
+  report never logs through a stopped container.
+- **The reporter logs at once, on the reporting thread** (that thread may be about to end the process), and
+  decides on the UI thread. The UI thread is a constructor delegate (`Action<Action> post`, `internal`), so the
+  tests run it in place — the suite still stands up no platform.
+- **The policy** (`UnhandledErrorPolicy`, `TimeProvider`-driven): a cancellation whose own token was cancelled,
+  or any cancellation during shutdown, is not an error (debug line only); the same exception object offered
+  twice is ignored; an error while a batch is open is merged into it; the same error (type + message + stack)
+  within a minute of its batch closing is suppressed. The details are type, message, stack and inner
+  exceptions to depth 8 — never `Exception.Data`, never `ToString()`. GitClient's credential redaction is left
+  out on purpose: a password here is a `char[]` that never enters a message.
+- **A command that throws synchronously from a UI Automation invoke surfaces to the automation client, not to
+  the dispatcher** — found during the manual check. Real clicks and async commands (every command here) go
+  through the dispatcher.
+- **The dialog is the reference's** (`UnhandledErrorView`): title *Something went wrong*, the Phosphor
+  `Warning` icon in `#E8A33D`, one default **Close**; the lead sentence, the message in SemiBold, "N more
+  errors occurred." when there are, and a collapsed **Details** expander with a read-only monospace box
+  (the app's own `mono` class) and **Copy details** (`IClipboardService`). GitClient's remedy line and token
+  reset are left out — nothing here stores credentials. **Change the reference first, then copy.**
+- **It waits for the host rather than replacing what is on it.** The net shows through
+  `IContentDialogService`, on `HostDialog` — the host About shares — so `App` hands it the same control with
+  `RegisterHost` (after the content dialog service has it). Before that, a batch waits; while another dialog
+  is open (`IsOpen`), it waits for `Closed`. The busy overlay needs no waiting: the dialog host is stacked
+  above it. A dialog that itself fails is logged, and the net goes log-only for the session — it must never
+  loop on itself.
+- **Three constructor delegates keep it testable without a platform**: the UI-thread post, the view factory
+  (the `UnhandledErrorView` XAML is never loaded in a test) and the icon (`AppIcons.Warning` needs the render
+  interface). The tests drive a real `ContentDialog` as the host — constructing one, and `ShowAsync` /
+  `HideAsync` on it, need no platform — over a `FakeContentDialogService`.
+
+Types in place: `UnhandledErrorSource`, `UnhandledErrorDecision`, `UnhandledErrorBatch`,
+`UnhandledErrorPolicy`, `UnhandledExceptionHooks`, `IUnhandledErrorReporter` / `UnhandledErrorReporter`
+(`internal sealed`, `AddSingleton`, with `TimeProvider.System` via `TryAddSingleton`),
+`UnhandledErrorViewModel`, `UnhandledErrorView`, and `AppIcons.Warning`.
+
+### Linux install and uninstall scripts (FEATURE-F319)
+
+`packaging/linux/install.sh` and `uninstall.sh` — Enigma.GitClient's per-user installer, the family
+reference, adapted: app id `enigma-licensing`, launcher `Enigma.Licensing.Desktop`.
+
+- **No root, nothing outside `$HOME`**: the app in `$XDG_DATA_HOME/enigma-licensing`, a symlink in
+  `$XDG_BIN_HOME`, a desktop entry from `enigma-licensing.desktop.in` (`@EXEC@` substituted in bash, never
+  sed — a path can contain any delimiter), and eight hicolor icons. It builds self-contained by default
+  (`--framework-dependent`, `--rid`, `--from DIR` otherwise), stages beside the install and swaps by rename, and
+  pins `DOTNET_ROOT` in the entry when a framework-dependent build's runtime is where no launcher looks.
+- **`uninstall.sh` removes exactly that**: the symlink only if it points into the install dir, and it refuses
+  an install path not ending in the app id. `~/.config/Enigma.Licensing` (the appearance preference) and every
+  key, licence or profile file a user saved are never touched.
+- **The icons are the Branding PNGs, verified byte for byte against `appicon.ico`'s frames** — 16, 24, 32, 48,
+  64, 96, 128, 256 (hicolor has no 20 or 40 directory). Change the icon in the Branding repository, then copy
+  both the `.ico` and these.
+- **Verified on Windows through Git Bash only**: a `linux-x64` publish installed and uninstalled into a
+  scratch XDG tree. Native symlinks need Developer Mode there, so the run used `MSYS=winsymlinks:lnk`; a real
+  Linux session (launcher entry, icon cache) is still owed.
+
+### Publish scripts for Windows and Linux (FEATURE-11BB)
+
+`packaging/windows/publish.ps1` / `publish.bat` and `packaging/linux/publish.sh` each run exactly
+`dotnet publish <src/Enigma.Licensing.Desktop> -c Release -r <win-x64|linux-x64> -p:PublishReadyToRun=true` —
+the plain publish every Enigma app ships. They take no argument, resolve the project from their own
+directory, and exit with `dotnet`'s code.
+
+- **Two publish pipelines now exist, on purpose.** `scripts/publish.*` (FEATURE-57BC) builds the **release
+  zips** — self-contained, single-file, versioned, under `artifacts/`; `packaging/**/publish.*` builds the
+  **framework-dependent ReadyToRun folder** in `bin/Release/net10.0/<rid>/publish/`. Each header, the README
+  and `docs/RELEASE.md` §7 tell them apart; neither replaces the other.
+- `publish.bat` is CRLF (`.gitattributes`); `publish.sh` is LF and `100755`.
+
+### The 2.1.0 release, prepared (FEATURE-B6BB)
+
+Library and app both read **2.1.0** (`app.manifest` 2.1.0.0), with a prepended `RELEASENOTES.md` section, a
+rewritten `<PackageReleaseNotes>`, the 2.1 README callout and `SECURITY.md` on `2.1.x`. A minor under the
+user's `x.y.z → x.(y+1).0` rule, and defensible under SemVer: no API moved, and the netstandard2.0 build
+covers every runtime the dropped net8.0 did.
+
+- **The notes say the two consumer-visible effects of dropping net8.0** — a .NET 8/9 app now gets the
+  netstandard2.0 build, which carries no trim/AOT annotations (possible new trim warnings) and brings
+  `System.Text.Json`/`System.Buffers`/`Microsoft.Bcl.AsyncInterfaces` as packages — and why the DI floor rose.
+- **Gates run**: clean Release build (0 warnings, 0 `AVLN`), 783/783 tests; the snippet gate (35 executable
+  fences compiled against the real 2.1.0 project, 5 signature listings diffed — 0 mismatches); pack-verify
+  in the scratchpad (one `.nupkg`, README 6,860 bytes and LICENSE embedded, nuspec fields, dependency groups
+  `net10.0` + `.NETStandard2.0` only, no PolySharp, no ILLink, no stale `Features` doc); the licence audit
+  re-read on the new graph (all MIT but the unchanged `Microsoft.NETCore.Platforms`); both release zips built
+  with `scripts/publish.ps1`, five entries each, and the win-x64 one launched and reporting 2.1.0.
+- **`ExcludeFromSingleFile="true"` on the `app.ico` item** — found by the zip check: the win-x64 single-file
+  bundler had swallowed the icon into the executable, so the zip had none. Keep the attribute.
+- **Nothing outward-facing happened.** No tag, no push, no `dotnet nuget push`; `docs/RELEASE.md` is the
+  maintainer's to run.
 
 ## Architecture & conventions
 
@@ -855,15 +1006,17 @@ src/Enigma.Licensing/                The library
   Keys/LicensingKey.cs               A parsed key + CurrentFormat; material internal, RSA handle parsed once
   Keys/LicensingKeyPair.cs           Both halves, as generation returns them
 src/Enigma.Licensing.Desktop/        The Avalonia issuer app (net10.0)
-  Program.cs                         Synchronous entry point; the host is built in App, not here
+  Program.cs                         Synchronous entry point; installs the exception hooks, the host is built in App
   App.axaml(.cs)                     Theme merge + style classes (the centred page frame); owns the IHost
   app.manifest                       Per-monitor-v2 DPI awareness (version bumped at release time)
-  Assets/appicon.ico                 A white key on a #3574F0 rounded square; 7 frames, 16→256 (FEATURE-7310)
+  Assets/appicon.ico                 A certificate and seal on a dark square; 10 PNG frames, 16→256 (FEATURE-1ECA);
+                                     also copied beside the executable as app.ico (FEATURE-0156)
+  Assets/app-256.png                 The icon's 256 px frame, for the About dialog (FEATURE-CF21)
   Hosting/EnigmaAvaloniaServiceCollectionExtensions.cs   AddEnigmaAvaloniaDesktop() — the library's six
   Hosting/ServiceCollectionExtensions.cs                 AddEnigmaLicensingDesktop() — + AddEnigmaLicensing()
   Properties/AssemblyInfo.cs         InternalsVisibleTo for the app's test assembly (PHASE02 — see Shipped)
-  Resources/AppIcons.cs              The four Phosphor rail outlines, resolved once each
-  Resources/AppInfo.cs               Title, project URL, app & library versions read from the assemblies
+  Resources/AppIcons.cs              The four Phosphor rail outlines + the error dialog's warning, resolved once each
+  Resources/AppInfo.cs               Title, project URL, versions, build sha & copyright read from the assemblies
   Services/IThemeService.cs          Repaint the app — the seam that keeps Avalonia out of the ViewModels
   Services/ThemeService.cs           The only place that assigns RequestedThemeVariant
   Services/IFileDialogService.cs     Ask where to write a document, or which one to open — paths, not handles
@@ -877,13 +1030,21 @@ src/Enigma.Licensing.Desktop/        The Avalonia issuer app (net10.0)
   Services/BusyOverlayService.cs     Builds the progress card in code, from the app's own style classes
   Services/IClipboardService.cs      Copy a short value — the fingerprint, above all
   Services/ClipboardService.cs       Via the running app's main window; no clipboard is a log line
+  Services/IAboutDialogService.cs    Show the About dialog
+  Services/AboutDialogService.cs     AboutView in the content dialog: no title, no icon, one Close (FEATURE-CF21)
+  Services/UnhandledExceptionHooks.cs   The process-wide hooks; early reports kept (≤ 32) until the net attaches
+  Services/UnhandledErrorPolicy.cs   Source/decision enums, the batch, and what is ignored, merged or suppressed
+  Services/IUnhandledErrorReporter.cs   The safety net: report from any thread, shutdown started, register the host
+  Services/UnhandledErrorReporter.cs    Logs at once, decides on the UI thread, shows the dialog when the host is free
   Settings/AppTheme.cs               System / Light / Dark
   Settings/AppSettings.cs            The preference file's shape + its formatVersion
   Settings/IAppSettingsStore.cs      Load/Save — neither may throw into the application
   Settings/AppSettingsStore.cs       ApplicationData/Enigma.Licensing/settings.json, temp-then-move
   ViewModels/MainWindowViewModel.cs  The rail: three workflows + settings in the footer; navigates nowhere
   ViewModels/ThemeOption.cs          One appearance choice: an AppTheme and the words offering it
-  ViewModels/SettingsViewModel.cs    Apply-and-persist exactly once, plus the about section
+  ViewModels/SettingsViewModel.cs    Apply-and-persist exactly once, plus the about section and its dialog
+  ViewModels/AboutViewModel.cs       Name, version, build sha, copyright — and which lines to hide
+  ViewModels/UnhandledErrorViewModel.cs   The error dialog: lead, message, "N more", details, copy (FEATURE-5443)
   ViewModels/SignatureAlgorithmOption.cs   One picker entry: scheme, wire label, description, is-RSA
   ViewModels/LicenseVerdictSeverity.cs     Success / Warning / Error — the app's own, not InfoBarSeverity
   ViewModels/LicenseVerdict.cs             The failure → headline/explanation/severity table + the class flags
@@ -892,7 +1053,9 @@ src/Enigma.Licensing.Desktop/        The Avalonia issuer app (net10.0)
   ViewModels/GenerateLicenseViewModel.cs   The generate page: the form, the lists, profiles, sign, result
   ViewModels/ValidateLicenseViewModel.cs   The validate page: two files, two expectations, verdict + cards
   Views/MainWindow.axaml(.cs)        NavigationView + the three service hosts, last in the root Panel
-  Views/SettingsView.axaml(.cs)      Appearance SettingsCard + the About expander
+  Views/SettingsView.axaml(.cs)      Appearance SettingsCard + the About expander and its dialog button
+  Views/AboutView.axaml(.cs)         The family's About dialog content, Enigma.GitClient's markup
+  Views/UnhandledErrorView.axaml(.cs)     The family's error dialog content, Enigma.GitClient's markup
   Views/GenerateKeysView.axaml(.cs)        Three SettingsCardExpanders, the accent button, the result card
   Views/GenerateLicenseView.axaml(.cs)     A profile SettingsCard + six expanders, the button, the result card
   Views/ValidateLicenseView.axaml(.cs)     Two expanders, the button, then the verdict / document / licence cards
@@ -912,8 +1075,9 @@ tests/Enigma.Licensing.Desktop.UnitTests/   xUnit v3 test suite for the app (net
   Hosting/                           The container wiring: what is registered, and with which lifetime
   Settings/                          The preference file and every way it can be useless
   Models/                            The profile file: its shape on disk, and every way one can be unreadable
-  Services/                          NotificationService's timing, BusyOverlayService's card (needs friend access)
+  Services/                          NotificationService's timing, BusyOverlayService's card, the safety net (friend access)
   LicenseSamples.cs                  Licences and verdicts built by hand — no cryptography, nothing that moves
+  AppIconTests.cs                    app.ico beside the executable, byte for byte the asset (FEATURE-0156)
   ViewModels/                        The rail, the appearance selector, and the three real pages + their round-trips
   Resources/                         AppInfo's shape (a version, no build metadata, an https project URL)
   TestDoubles/                       The app's seams and the library ones beneath them, plus RecordingLogger
@@ -928,6 +1092,13 @@ docs/guides/validating-licenses.md   The check order, the seven failures, ILicen
 docs/guides/device-identity.md       DeviceIdentifier, its weaknesses, and plugging in another scheme
 docs/RELEASE.md                      The release runbook — pre-flight, merge, tag, pack, push, app zips
 docs/migrations/1.0.0-to-2.0.0.md    Migrating a consumer off Features/Claims; an agent-consumable prompt part
+packaging/linux/install.sh           Per-user XDG install of the app: build or --from, symlink, entry, 8 icons (FEATURE-F319)
+packaging/linux/uninstall.sh         Removes exactly that; never ~/.config/Enigma.Licensing, never a user file
+packaging/linux/enigma-licensing.desktop.in   The launcher entry; @EXEC@ substituted by install.sh
+packaging/linux/icons/               enigma-licensing-<N>.png ×8, byte for byte the .ico's frames
+packaging/linux/publish.sh           dotnet publish … -r linux-x64 -p:PublishReadyToRun=true, from anywhere (FEATURE-11BB)
+packaging/windows/publish.ps1        The same for win-x64 (Windows PowerShell 5.1+)
+packaging/windows/publish.bat        Its cmd twin (CRLF), no execution policy involved
 scripts/publish.sh                   Builds the app's distribution zips; version asked of MSBuild
 scripts/publish.ps1                  Its PowerShell twin — same artifacts, cut a release from either OS
 ```
@@ -936,28 +1107,31 @@ There is **no CI workflow**, deliberately — consistent with every sibling Enig
 
 ## Target frameworks & dependencies
 
-- The library multi-targets **`netstandard2.0;net8.0;net10.0`** — it ships as a NuGet package, and
-  the broad floor mirrors Enigma.Core so no Enigma.Core consumer is excluded (Enigma.DataEncryption
-  precedent). The reason is recorded in a csproj comment; keep it there.
-- The library's test project targets **`net8.0;net10.0`**. `netstandard2.0` is never a test TFM; its
-  polyfill surface is exercised through the `net8.0` paths. The desktop app and its test project are
-  **net10.0** only — an application, not a package, so nothing is gained by reaching back.
+- The library multi-targets **`netstandard2.0;net10.0`** — it ships as a NuGet package, and
+  netstandard2.0 keeps .NET Framework and every older runtime reachable (Enigma.DataEncryption
+  precedent). `FEATURE-A0EB` dropped `net8.0`, which leaves support on 2026-11-10; a net8.0 or net9.0
+  consumer now gets the netstandard2.0 build. The reason is recorded in a csproj comment; keep it there.
+- The library's test project targets **`net10.0`** alone. `netstandard2.0` is never a test TFM — it has
+  no runtime to execute on, so nothing in the suite runs the netstandard2.0 build (the old `net8.0` leg
+  did not either: it ran the library's own net8.0 build). The desktop app and
+  its test project are **net10.0** only — an application, not a package, so nothing is gained by reaching
+  back.
 - **Currently pinned** in `Directory.Packages.props` — only what the code actually references:
-  `Enigma.Core` 2.0.0, `Microsoft.Extensions.DependencyInjection.Abstractions` 9.0.18, `Ulid` 1.4.1 and
-  `DeviceId` 6.11.0 (all three TFMs), `PolySharp` 1.16.0,
-  `System.Buffers` 4.6.1 and `System.Text.Json` 10.0.12 (those three **netstandard2.0 only** in the
-  library), `xunit.v3` 3.2.2, `coverlet.collector` 10.0.1,
-  `Microsoft.Extensions.DependencyInjection` 9.0.18 (tests only — the concrete container, so the
+  `Enigma.Core` 2.0.0, `Microsoft.Extensions.DependencyInjection.Abstractions` 10.0.14, `Ulid` 1.4.1 and
+  `DeviceId` 6.11.0 (both TFMs), `PolySharp` 1.16.0,
+  `System.Buffers` 4.6.1 and `System.Text.Json` 10.0.14 (those three **netstandard2.0 only** in the
+  library), `xunit.v3` 4.0.2, `coverlet.collector` 10.1.0,
+  `Microsoft.Extensions.DependencyInjection` 10.0.14 (tests only — the concrete container, so the
   registration tests can build a real `ServiceProvider`). Referencing `System.Buffers` or
-  `System.Text.Json` on net8.0+ raises
+  `System.Text.Json` on net10.0 raises
   NU1510 and fails the zero-warning build — both are framework-provided there, and the library's JSON
   usage stays inside what System.Text.Json 8.0 supports. PolySharp (compile-only, `PrivateAssets=all`)
   is what makes `init`/`required` members and the nullable-analysis attributes work on netstandard2.0.
-- **Enigma.Core is referenced unconditionally**: it multi-targets exactly the same three TFMs, and its
+- **Enigma.Core is referenced unconditionally**: it multi-targets both of our TFMs, and its
   netstandard2.0 dependency group asks for `System.Buffers` 4.6.1 — the version already pinned — so the
   graph closes with no duplicate. It brings `BouncyCastle.Cryptography` 2.7.0 transitively; neither may
   reach this library's public surface.
-- **Ulid and DeviceId are referenced unconditionally too** (both MIT, both multi-target the same three
+- **Ulid and DeviceId are referenced unconditionally too** (both MIT, both multi-target both of our
   TFMs). Ulid mints the identifier the generator stamps when a request carries none — sortable by issue
   time, unlike a GUID; on netstandard2.0 it asks for `System.Memory` and
   `System.Runtime.CompilerServices.Unsafe`, which the graph already closes over. DeviceId backs
@@ -970,24 +1144,27 @@ There is **no CI workflow**, deliberately — consistent with every sibling Enig
   is the **only** dependency whose types are allowed on the public surface — `AddEnigmaLicensing()` takes
   and returns `IServiceCollection`. Abstractions only, never the concrete container: a library registers
   services, it does not build the provider. It is not part of any shared framework, so unlike
-  System.Text.Json it raises no NU1510 on net8.0+. The **9.x floor is deliberate** (Enigma.DataEncryption
-  precedent): NuGet resolves a package to the highest floor in the graph, so a high floor here would drag
-  a consumer's whole `Microsoft.Extensions.*` set forward. On netstandard2.0 alone it pulls
-  `Microsoft.Bcl.AsyncInterfaces` and `System.Threading.Tasks.Extensions` — both inbox on net8.0+, both
-  MIT, and both cleared by the same audit. (Both resolve above their floors, since System.Text.Json asks
-  for more on that leg.) `FEATURE-82E5` reaffirmed the 9.x floor rather than taking the 10.0.12 that was
-  available — raising it is exactly the consumer-wide drag the floor exists to avoid.
+  System.Text.Json it raises no NU1510 on net10.0. **The floor is 10.x, and that is a decision**: NuGet
+  resolves a package to the highest floor in the graph, so this floor sets the oldest
+  `Microsoft.Extensions.*` line a consumer can stay on. It was 9.x (Enigma.DataEncryption precedent), and
+  `FEATURE-82E5` reaffirmed that rather than drag consumers forward. `FEATURE-9083` raised it to 10.0.14
+  because the 8.x and 9.x lines leave support with .NET 8 and .NET 9 on 2026-11-10 — 10.x is the only
+  supported line left, for .NET Framework consumers of the netstandard2.0 build too — and the spec asked
+  for the latest packages. Raising a dependency floor breaks no API. On netstandard2.0 alone it pulls
+  `Microsoft.Bcl.AsyncInterfaces` 10.0.14 and `System.Threading.Tasks.Extensions` 4.6.3 — both inbox on
+  net10.0, both MIT.
 - **Runtime dependencies, final for the library: Enigma.Core, Microsoft.Extensions.DependencyInjection.Abstractions,
   Ulid and DeviceId everywhere; System.Buffers and System.Text.Json on netstandard2.0 only.** Nothing
   further is expected — `FEATURE-03A9` is complete, and `FEATURE-57BC-PHASE01` added no package (its
   source generator ships inside System.Text.Json / the SDK, and `IsAotCompatible`'s
   `Microsoft.NET.ILLink.Tasks` is an auto-referenced build task that never reaches the nuspec).
 - **The desktop app's pins landed with `FEATURE-179C-PHASE01`** and are expected to be its whole set:
-  `Microsoft.Extensions.Hosting` / `.Logging.Console` / `.Logging.Debug` 10.0.12, and the
+  `Microsoft.Extensions.Hosting` / `.Logging.Console` / `.Logging.Debug` 10.0.14, and the
   **version-coupled** group — `Avalonia`, `Avalonia.Desktop`, `Avalonia.Themes.Fluent`,
-  `Avalonia.Fonts.Inter` 12.1.1, `AvaloniaUI.DiagnosticsSupport` 2.2.3, `CommunityToolkit.Mvvm` 8.4.2,
-  `Enigma.Avalonia.Desktop` 1.0.0 and `Enigma.Icons` / `.Phosphor` / `.Avalonia` 1.0.0. **Bump that group
-  as a unit, never one package at a time**: the control library pins Avalonia 12.1.1 and
+  `Avalonia.Fonts.Inter` 12.1.4, `AvaloniaUI.DiagnosticsSupport` 2.2.3, `CommunityToolkit.Mvvm` 8.4.2,
+  `Enigma.Avalonia.Desktop` 1.3.0 and `Enigma.Icons` / `.Phosphor` / `.Avalonia` 1.0.0 (`FEATURE-9083`
+  moved the set from 12.1.1 / 1.0.0). **Bump that group
+  as a unit, never one package at a time**: the control library pins Avalonia 12.1.4 and
   CommunityToolkit.Mvvm 8.4.2 itself, and Enigma.Icons.Avalonia needs Avalonia ≥ 12.1.0. Five of them
   (Avalonia, Avalonia.Themes.Fluent, CommunityToolkit.Mvvm, Enigma.Icons, Enigma.Icons.Phosphor) would
   arrive transitively and are pinned explicitly anyway, house convention, so the version is visible rather
@@ -1013,20 +1190,8 @@ DOTNET_ROOT=~/.dotnet dotnet test --solution Enigma.Licensing.slnx -c Release
 Note the `--solution` flag: on the .NET 10 SDK in MTP mode, `dotnet test <Solution>.slnx` is
 rejected.
 
-**This machine has no .NET 8 runtime** (`~/.dotnet/shared/Microsoft.NETCore.App` holds 10.0.10 alone),
-so the library test project's **net8.0 leg cannot launch** — the run reports `error: 1` and a non-zero
-exit code while every test that did run passed. That is a missing runtime, not a red suite: the net8.0
-binaries build clean and pass when run with a roll-forward, which is how that leg is verified here.
-
-```bash
-# The net8.0-compiled tests, executed on the installed 10.x runtime
-cd tests/Enigma.Licensing.UnitTests/bin/Release/net8.0
-DOTNET_ROOT=~/.dotnet DOTNET_ROLL_FORWARD=LatestMajor ./Enigma.Licensing.UnitTests.exe
-```
-
-Installing the .NET 8 runtime makes the plain `dotnet test` command green again. Do not "fix" this by
-dropping `net8.0` from the test project — that TFM is how the netstandard2.0 polyfill surface is
-exercised (and see `NETSDK1138` below for when dropping it *does* become the answer).
+Every test project targets net10.0 alone (`FEATURE-A0EB`), so a machine with only the .NET 10 runtime
+runs the whole suite — the net8.0 leg that needed a roll-forward recipe on such a machine is gone.
 
 Those two commands are also the release pre-flight. `scripts/publish.sh` (or its `.ps1` twin) builds
 the app's distribution zips into `artifacts/`, and everything beyond that — tag, pack, push — is
@@ -1048,7 +1213,8 @@ public member fails the build in both.
 Tests are **MTP-native**: `xunit.v3` + `coverlet.collector`, with **no** `Microsoft.NET.Test.Sdk`
 and **no** `xunit.runner.visualstudio` — both break the Microsoft Testing Platform. `Xunit` is the
 only implicit using in each test project. Test fixtures are copied by a `**/*.json` + `**/*.txt`
-`PreserveNewest` glob (library suite only — the desktop suite loads no fixture files).
+`PreserveNewest` glob (library suite only — the desktop suite has no fixture files; `AppIconTests` alone
+reads a file, the app's own `app.ico` from the output and its source asset from the tree).
 
 **The desktop suite stands up no Avalonia platform.** Anything needing one — `MainWindow`, the page
 views, and `MainWindowViewModel`'s icon factory (a Phosphor glyph becomes a `StreamGeometry`, which needs
@@ -1069,8 +1235,9 @@ passed `TestContext.Current.CancellationToken`. `LicenseEnvelopeTests`, the `Key
 `private static CancellationToken Token => TestContext.Current.CancellationToken;`
 for this — copy that pattern rather than suppressing the rule.
 
-**Key generation is the expensive part of the suite** (most of the ~13 s run over 1174 cases — 876 in the
-library suite, 298 in the desktop one, which costs about two seconds): eleven RSA
+**Key generation is the expensive part of the suite** (most of the run over 712 cases — 426 in the
+library suite, which runs once now that it targets net10.0 alone, and 286 in the desktop one, which costs
+a few seconds): eleven RSA
 pairs, one at 4096 bits, plus Argon2id at 64 MiB per encrypted round-trip. Two collection fixtures exist
 so nothing generates a key it does not need to:
 
@@ -1094,13 +1261,11 @@ all, since `LicenseValidationResult` has a public constructor.
 Both follow from `TreatWarningsAsErrors=true`. Recognise them before hunting for a regression that
 isn't there:
 
-- **`NETSDK1138` — net8.0 leaves support on 2026-11-10.** The SDK's end-of-life target-framework
-  check is skipped for `Library` projects but live for `Exe`, so it applies to
-  **`Enigma.Licensing.UnitTests` alone**: it is the only project in the solution that is both an
-  executable and targets net8.0 (the library is a `Library`; the app and its test project are net10.0
-  only). The first SDK release that adds `8.0` to `_EolNetCoreTargetFrameworkVersions` turns that
-  project's net8.0 leg into an error. Fix then: drop `net8.0` there, or set `CheckEolTargetFramework`
-  to false. A comment at the property records this.
+- **`NETSDK1138` — an end-of-life target framework.** The SDK's EOL target-framework check is skipped
+  for `Library` projects but live for `Exe`, so it bites a **test project** the day the SDK lists its
+  TFM as out of support. Nothing targets an EOL runtime today — `FEATURE-A0EB` dropped `net8.0` ahead of
+  its 2026-11-10 end of support — but net10.0 will get there in turn: drop the TFM then rather than
+  setting `CheckEolTargetFramework` to false.
 - **`NU1901`–`NU1904` — NuGet auditing.** Restore warnings are errors here too, auditing defaults to
   on at `low` severity, and on the net10.0 leg it audits the **transitive** closure. A newly
   published advisory against any pinned package — or anything it drags in — fails the build with no
@@ -1133,7 +1298,7 @@ MTP coverage needs `Microsoft.Testing.Extensions.CodeCoverage`. Measure before t
   Every document goes through `EnvelopeJsonContext` or `PayloadJsonContext` by way of a
   `JsonTypeInfo<T>` from `LicenseJson`. **Never call a `JsonSerializer` overload that takes bare
   `JsonSerializerOptions`** — those are attributed `[RequiresUnreferencedCode]`/`[RequiresDynamicCode]`,
-  and `IsAotCompatible` on the net8.0+ legs turns them into build errors. A new document type needs a
+  and `IsAotCompatible` on the net10.0 leg turns them into build errors. A new document type needs a
   `[JsonSerializable]` entry on the right context and a `JsonTypeInfo` member on `LicenseJson`;
   registering it nowhere means it throws rather than falling back to reflection, which is the point.
 - **Documentation.** Every public member carries XML docs; `GenerateDocumentationFile=true` is on
@@ -1152,7 +1317,8 @@ MTP coverage needs `Microsoft.Testing.Extensions.CodeCoverage`. Measure before t
   two cannot disagree; keep them in step. There are deliberately **no symbol properties** and no
   `GeneratePackageOnBuild`: a release ships one `.nupkg`, packed explicitly. The library and the app
   version independently, in their own csproj — there is no solution-wide `<Version>` — but `FEATURE-82E5`
-  put both on **2.0.0**, because one change broke both. `app.manifest`'s four-part `assemblyIdentity` is
+  put both on **2.0.0**, because one change broke both, and `FEATURE-B6BB` both on **2.1.0**, because one
+  run changed both. `app.manifest`'s four-part `assemblyIdentity` is
   kept in step with the app's `<Version>` by hand; nothing derives one from the other.
 - **Docs stay honest.** When a phase lands, update this file, `docs/roadmap.md` and the plan status
   in the same unit of work; do not leave "planned" markers on shipped code.
@@ -1176,5 +1342,8 @@ skeleton) → `FEATURE-03A9` (licensing core library, 4 phases) → `FEATURE-179
 → `FEATURE-57BC` (v1.0.0 release, 4 phases). Everything after it is maintenance on a feature-done
 repository, so the items are independent and single-phase: `FEATURE-6C54` (Enigma.Core 2.0.0),
 `BUG-5147` (centre the pages' content), `FEATURE-7310` (the app icon), `FEATURE-B086` (remove features
-and claims) and `FEATURE-82E5` (the v2.0.0 release). Read `docs/roadmap.md` for what is still `TODO`;
+and claims) and `FEATURE-82E5` (the v2.0.0 release); then the uniform-baseline run — `FEATURE-A0EB` (drop
+net8.0), `FEATURE-9083` (packages), `FEATURE-1ECA` (new icon), `FEATURE-CF21` (About dialog), `FEATURE-0156`
+(`app.ico` in the output), `FEATURE-5443` (error net, 2 phases), `FEATURE-F319` (Linux install),
+`FEATURE-11BB` (publish scripts) and `FEATURE-B6BB` (the 2.1.0 release). Read `docs/roadmap.md` for what is still `TODO`;
 a new work item means allocating an ID, planning it, and appending its row.

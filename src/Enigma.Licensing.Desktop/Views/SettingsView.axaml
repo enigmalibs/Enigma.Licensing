@@ -54,6 +54,15 @@
           <TextBlock Classes="field" Text="Project" />
           <SelectableTextBlock Classes="value mono" Text="{Binding ProjectUrl}" />
 
+          <!-- The dialog every Enigma application shows — the icon, the build and the copyright — from
+               here, as Enigma.GitClient's settings page opens it: the rail has no toolbar to put it on. -->
+          <Button Name="OpenAbout"
+                  Command="{Binding OpenAboutCommand}"
+                  HorizontalAlignment="Left"
+                  Margin="0,8,0,0"
+                  Content="About Enigma Licensing"
+                  AutomationProperties.Name="About Enigma Licensing" />
+
         </StackPanel>
       </controls:SettingsCardExpander>
 

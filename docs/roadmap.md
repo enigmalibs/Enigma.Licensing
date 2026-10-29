@@ -23,3 +23,14 @@
 | FEATURE-7310 | Branded desktop application icon               | DONE   | docs/plan/FEATURE-7310.md |
 | FEATURE-B086 | Remove licence features & claims               | DONE   | docs/plan/FEATURE-B086.md |
 | FEATURE-82E5 | Release v2.0.0                                 | DONE   | docs/plan/FEATURE-82E5.md |
+| FEATURE-A0EB | Drop the net8.0 targets                        | DONE   | docs/plan/FEATURE-A0EB.md |
+| FEATURE-9083 | Update NuGet packages                          | DONE   | docs/plan/FEATURE-9083.md |
+| FEATURE-1ECA | New application icon                           | DONE   | docs/plan/FEATURE-1ECA.md |
+| FEATURE-CF21 | Uniform About dialog                           | DONE   | docs/plan/FEATURE-CF21.md |
+| FEATURE-0156 | App icon in the output directory               | DONE   | docs/plan/FEATURE-0156.md |
+| FEATURE-5443 | Catch unhandled exceptions                     | DONE   | docs/plan/FEATURE-5443.md |
+| - PHASE01    | Hooks, policy and logging                      | DONE   | (in FEATURE-5443.md)      |
+| - PHASE02    | The error dialog                               | DONE   | (in FEATURE-5443.md)      |
+| FEATURE-F319 | Linux install and uninstall scripts            | DONE   | docs/plan/FEATURE-F319.md |
+| FEATURE-11BB | Publish scripts for Windows and Linux          | DONE   | docs/plan/FEATURE-11BB.md |
+| FEATURE-B6BB | Release 2.1.0                                  | DONE   | docs/plan/FEATURE-B6BB.md |
