@@ -763,11 +763,10 @@ Types in place: `IAboutDialogService` / `AboutDialogService` (`internal sealed`,
 
 ### The unhandled-exception safety net (FEATURE-5443)
 
-Every exception nothing else caught is logged with where it was caught, and the application keeps
-running. Enigma.GitClient's net, the family reference, scaled to one window and no credentials: static
-hooks → a reporter → a policy. `PHASE01` shipped the hooks, the policy and the logging; the error dialog is
-`PHASE02`'s, and until it lands a queued batch is opened and closed at once, so the repeat window already
-applies to the log.
+Every exception nothing else caught is logged with where it was caught, shown in an error dialog that says
+the application is still running, and the application keeps running. Enigma.GitClient's net, the family
+reference, scaled to one window and no credentials: static hooks → a reporter → a policy → a dialog.
+`PHASE01` shipped the hooks, the policy and the logging; `PHASE02` the dialog.
 
 - **Three hooks, installed in two places.** `Program.Main` calls `UnhandledExceptionHooks.Install()` first
   (`AppDomain.UnhandledException`, `TaskScheduler.UnobservedTaskException`); `App` calls
@@ -789,10 +788,26 @@ applies to the log.
 - **A command that throws synchronously from a UI Automation invoke surfaces to the automation client, not to
   the dispatcher** — found during the manual check. Real clicks and async commands (every command here) go
   through the dispatcher.
+- **The dialog is the reference's** (`UnhandledErrorView`): title *Something went wrong*, the Phosphor
+  `Warning` icon in `#E8A33D`, one default **Close**; the lead sentence, the message in SemiBold, "N more
+  errors occurred." when there are, and a collapsed **Details** expander with a read-only monospace box
+  (the app's own `mono` class) and **Copy details** (`IClipboardService`). GitClient's remedy line and token
+  reset are left out — nothing here stores credentials. **Change the reference first, then copy.**
+- **It waits for the host rather than replacing what is on it.** The net shows through
+  `IContentDialogService`, on `HostDialog` — the host About shares — so `App` hands it the same control with
+  `RegisterHost` (after the content dialog service has it). Before that, a batch waits; while another dialog
+  is open (`IsOpen`), it waits for `Closed`. The busy overlay needs no waiting: the dialog host is stacked
+  above it. A dialog that itself fails is logged, and the net goes log-only for the session — it must never
+  loop on itself.
+- **Three constructor delegates keep it testable without a platform**: the UI-thread post, the view factory
+  (the `UnhandledErrorView` XAML is never loaded in a test) and the icon (`AppIcons.Warning` needs the render
+  interface). The tests drive a real `ContentDialog` as the host — constructing one, and `ShowAsync` /
+  `HideAsync` on it, need no platform — over a `FakeContentDialogService`.
 
 Types in place: `UnhandledErrorSource`, `UnhandledErrorDecision`, `UnhandledErrorBatch`,
-`UnhandledErrorPolicy`, `UnhandledExceptionHooks`, and `IUnhandledErrorReporter` / `UnhandledErrorReporter`
-(`internal sealed`, `AddSingleton`, with `TimeProvider.System` via `TryAddSingleton`).
+`UnhandledErrorPolicy`, `UnhandledExceptionHooks`, `IUnhandledErrorReporter` / `UnhandledErrorReporter`
+(`internal sealed`, `AddSingleton`, with `TimeProvider.System` via `TryAddSingleton`),
+`UnhandledErrorViewModel`, `UnhandledErrorView`, and `AppIcons.Warning`.
 
 ## Architecture & conventions
 
@@ -937,7 +952,7 @@ src/Enigma.Licensing.Desktop/        The Avalonia issuer app (net10.0)
   Hosting/EnigmaAvaloniaServiceCollectionExtensions.cs   AddEnigmaAvaloniaDesktop() — the library's six
   Hosting/ServiceCollectionExtensions.cs                 AddEnigmaLicensingDesktop() — + AddEnigmaLicensing()
   Properties/AssemblyInfo.cs         InternalsVisibleTo for the app's test assembly (PHASE02 — see Shipped)
-  Resources/AppIcons.cs              The four Phosphor rail outlines, resolved once each
+  Resources/AppIcons.cs              The four Phosphor rail outlines + the error dialog's warning, resolved once each
   Resources/AppInfo.cs               Title, project URL, versions, build sha & copyright read from the assemblies
   Services/IThemeService.cs          Repaint the app — the seam that keeps Avalonia out of the ViewModels
   Services/ThemeService.cs           The only place that assigns RequestedThemeVariant
@@ -956,8 +971,8 @@ src/Enigma.Licensing.Desktop/        The Avalonia issuer app (net10.0)
   Services/AboutDialogService.cs     AboutView in the content dialog: no title, no icon, one Close (FEATURE-CF21)
   Services/UnhandledExceptionHooks.cs   The process-wide hooks; early reports kept (≤ 32) until the net attaches
   Services/UnhandledErrorPolicy.cs   Source/decision enums, the batch, and what is ignored, merged or suppressed
-  Services/IUnhandledErrorReporter.cs   The safety net: report from any thread, shutdown started
-  Services/UnhandledErrorReporter.cs    Logs at once, decides on the UI thread
+  Services/IUnhandledErrorReporter.cs   The safety net: report from any thread, shutdown started, register the host
+  Services/UnhandledErrorReporter.cs    Logs at once, decides on the UI thread, shows the dialog when the host is free
   Settings/AppTheme.cs               System / Light / Dark
   Settings/AppSettings.cs            The preference file's shape + its formatVersion
   Settings/IAppSettingsStore.cs      Load/Save — neither may throw into the application
@@ -966,6 +981,7 @@ src/Enigma.Licensing.Desktop/        The Avalonia issuer app (net10.0)
   ViewModels/ThemeOption.cs          One appearance choice: an AppTheme and the words offering it
   ViewModels/SettingsViewModel.cs    Apply-and-persist exactly once, plus the about section and its dialog
   ViewModels/AboutViewModel.cs       Name, version, build sha, copyright — and which lines to hide
+  ViewModels/UnhandledErrorViewModel.cs   The error dialog: lead, message, "N more", details, copy (FEATURE-5443)
   ViewModels/SignatureAlgorithmOption.cs   One picker entry: scheme, wire label, description, is-RSA
   ViewModels/LicenseVerdictSeverity.cs     Success / Warning / Error — the app's own, not InfoBarSeverity
   ViewModels/LicenseVerdict.cs             The failure → headline/explanation/severity table + the class flags
@@ -976,6 +992,7 @@ src/Enigma.Licensing.Desktop/        The Avalonia issuer app (net10.0)
   Views/MainWindow.axaml(.cs)        NavigationView + the three service hosts, last in the root Panel
   Views/SettingsView.axaml(.cs)      Appearance SettingsCard + the About expander and its dialog button
   Views/AboutView.axaml(.cs)         The family's About dialog content, Enigma.GitClient's markup
+  Views/UnhandledErrorView.axaml(.cs)     The family's error dialog content, Enigma.GitClient's markup
   Views/GenerateKeysView.axaml(.cs)        Three SettingsCardExpanders, the accent button, the result card
   Views/GenerateLicenseView.axaml(.cs)     A profile SettingsCard + six expanders, the button, the result card
   Views/ValidateLicenseView.axaml(.cs)     Two expanders, the button, then the verdict / document / licence cards
