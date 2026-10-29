@@ -1,6 +1,6 @@
 # FEATURE-F319 — Linux install and uninstall scripts
 
-**Status:** TODO
+**Status:** DONE
 **Type:** single-phase
 **Branch:** `feature/feature-f319-linux-install-scripts`
 **Run:** feature/2026-10-29-uniform-enigma-apps

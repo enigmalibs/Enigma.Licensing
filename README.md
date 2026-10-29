@@ -110,7 +110,9 @@ The repository also contains **Enigma.Licensing.Desktop**, an Avalonia applicati
 generates key pairs, signs licenses from a form (with saveable profiles), and validates a license
 against a public key, reaching the same verdicts the library does. It is built on the library's
 public surface — exactly what a third-party consumer gets — and is distributed as a self-contained
-zip for Windows and Linux rather than through NuGet.
+zip for Windows and Linux rather than through NuGet. On Linux, `packaging/linux/install.sh` in the
+repository builds it and installs it for the current user — application, launcher entry and icon,
+no root needed — and `uninstall.sh` beside it removes exactly that.
 
 ## License
 

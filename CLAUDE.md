@@ -809,6 +809,26 @@ Types in place: `UnhandledErrorSource`, `UnhandledErrorDecision`, `UnhandledErro
 (`internal sealed`, `AddSingleton`, with `TimeProvider.System` via `TryAddSingleton`),
 `UnhandledErrorViewModel`, `UnhandledErrorView`, and `AppIcons.Warning`.
 
+### Linux install and uninstall scripts (FEATURE-F319)
+
+`packaging/linux/install.sh` and `uninstall.sh` — Enigma.GitClient's per-user installer, the family
+reference, adapted: app id `enigma-licensing`, launcher `Enigma.Licensing.Desktop`.
+
+- **No root, nothing outside `$HOME`**: the app in `$XDG_DATA_HOME/enigma-licensing`, a symlink in
+  `$XDG_BIN_HOME`, a desktop entry from `enigma-licensing.desktop.in` (`@EXEC@` substituted in bash, never
+  sed — a path can contain any delimiter), and eight hicolor icons. It builds self-contained by default
+  (`--framework-dependent`, `--rid`, `--from DIR` otherwise), stages beside the install and swaps by rename, and
+  pins `DOTNET_ROOT` in the entry when a framework-dependent build's runtime is where no launcher looks.
+- **`uninstall.sh` removes exactly that**: the symlink only if it points into the install dir, and it refuses
+  an install path not ending in the app id. `~/.config/Enigma.Licensing` (the appearance preference) and every
+  key, licence or profile file a user saved are never touched.
+- **The icons are the Branding PNGs, verified byte for byte against `appicon.ico`'s frames** — 16, 24, 32, 48,
+  64, 96, 128, 256 (hicolor has no 20 or 40 directory). Change the icon in the Branding repository, then copy
+  both the `.ico` and these.
+- **Verified on Windows through Git Bash only**: a `linux-x64` publish installed and uninstalled into a
+  scratch XDG tree. Native symlinks need Developer Mode there, so the run used `MSYS=winsymlinks:lnk`; a real
+  Linux session (launcher entry, icon cache) is still owed.
+
 ## Architecture & conventions
 
 These hold across the whole library, and everything here **ships** — `FEATURE-03A9` is complete, so no
@@ -1029,6 +1049,10 @@ docs/guides/validating-licenses.md   The check order, the seven failures, ILicen
 docs/guides/device-identity.md       DeviceIdentifier, its weaknesses, and plugging in another scheme
 docs/RELEASE.md                      The release runbook — pre-flight, merge, tag, pack, push, app zips
 docs/migrations/1.0.0-to-2.0.0.md    Migrating a consumer off Features/Claims; an agent-consumable prompt part
+packaging/linux/install.sh           Per-user XDG install of the app: build or --from, symlink, entry, 8 icons (FEATURE-F319)
+packaging/linux/uninstall.sh         Removes exactly that; never ~/.config/Enigma.Licensing, never a user file
+packaging/linux/enigma-licensing.desktop.in   The launcher entry; @EXEC@ substituted by install.sh
+packaging/linux/icons/               enigma-licensing-<N>.png ×8, byte for byte the .ico's frames
 scripts/publish.sh                   Builds the app's distribution zips; version asked of MSBuild
 scripts/publish.ps1                  Its PowerShell twin — same artifacts, cut a release from either OS
 ```
