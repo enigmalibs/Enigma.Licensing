@@ -1,6 +1,6 @@
 # FEATURE-9083 — Update NuGet packages
 
-**Status:** TODO
+**Status:** DONE
 **Type:** single-phase
 **Branch:** `feature/feature-9083-update-packages`
 **Run:** feature/2026-10-29-uniform-enigma-apps
