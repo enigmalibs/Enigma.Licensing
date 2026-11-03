@@ -668,6 +668,11 @@ the whole of the change: the two places that point at it — `<ApplicationIcon>`
   fine — the DIB choice was caution about an unknown, not an observed failure. A redesign happens in the
   Branding repository, never here. The about-box bitmap now exists too: `FEATURE-CF21` ships
   `Assets/app-256.png`, the `.ico`'s 256 px frame byte for byte.
+- **The tile is gone since `FEATURE-BD63`.** The same certificate and seal now stand on a **transparent**
+  background, the certificate's outline cut where the seal overlaps it — the family's tile-less set,
+  `Branding/Apps/export.py final2`, output in `Branding/Apps/final2/licensing/`. Same ten PNG frames, same
+  file names: `appicon.ico`, `app-256.png` and the eight Linux PNGs are that folder's files byte for byte.
+  The SVG masters stay in the Branding repository; nothing here consumes one.
 
 ### Feature flags and claims are gone (FEATURE-B086)
 
@@ -1009,7 +1014,7 @@ src/Enigma.Licensing.Desktop/        The Avalonia issuer app (net10.0)
   Program.cs                         Synchronous entry point; installs the exception hooks, the host is built in App
   App.axaml(.cs)                     Theme merge + style classes (the centred page frame); owns the IHost
   app.manifest                       Per-monitor-v2 DPI awareness (version bumped at release time)
-  Assets/appicon.ico                 A certificate and seal on a dark square; 10 PNG frames, 16→256 (FEATURE-1ECA);
+  Assets/appicon.ico                 A certificate and seal, no tile; 10 PNG frames, 16→256 (FEATURE-BD63);
                                      also copied beside the executable as app.ico (FEATURE-0156)
   Assets/app-256.png                 The icon's 256 px frame, for the About dialog (FEATURE-CF21)
   Hosting/EnigmaAvaloniaServiceCollectionExtensions.cs   AddEnigmaAvaloniaDesktop() — the library's six

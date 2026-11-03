@@ -1,6 +1,6 @@
 # FEATURE-BD63 — New icon set without the tile
 
-**Status:** TODO
+**Status:** DONE
 **Type:** single-phase
 **Branch:** `feature/feature-bd63-new-icon-set`
 **Run:** feature/2026-11-03-icons-msi-release
