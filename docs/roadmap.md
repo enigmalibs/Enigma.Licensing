@@ -38,4 +38,4 @@
 | FEATURE-6D42 | Windows MSI installer                          | DONE   | docs/plan/FEATURE-6D42.md |
 | - PHASE01    | Vendor the Enigma.Msi worker CLI               | DONE   | (in FEATURE-6D42.md)      |
 | - PHASE02    | The buildmsi script                            | DONE   | (in FEATURE-6D42.md)      |
-| FEATURE-FF4B | Release 2.2.0                                  | TODO   | docs/plan/FEATURE-FF4B.md |
+| FEATURE-FF4B | Release 2.2.0                                  | DONE   | docs/plan/FEATURE-FF4B.md |

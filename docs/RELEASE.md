@@ -9,6 +9,12 @@ in `src/Enigma.Licensing/Enigma.Licensing.csproj` (`<Version>`); the desktop app
 independent `<Version>` in `src/Enigma.Licensing.Desktop/Enigma.Licensing.Desktop.csproj` — there is no
 solution-wide version, so a release that moves both moves both files.
 
+An **application-only** release (2.2.0 was the first) moves the app's `<Version>` and `app.manifest`
+alone. It prepends its own `RELEASENOTES.md` section, saying the library is unchanged, but leaves the
+library's `<Version>`, its `<PackageReleaseNotes>` and the README's what's-new callout alone — all three
+describe the package. It skips steps 4–6: there is nothing to pack or push. The tag (step 3) still marks
+the release.
+
 The SDK lives in `~/.dotnet` on the maintainer's machine, so every command below is shown with a
 `DOTNET_ROOT=~/.dotnet` prefix. Drop it if `dotnet` is on the default path.
 
@@ -18,7 +24,9 @@ Run from the repository root, on the branch that will be merged:
 
 - [ ] `<Version>X.Y.Z</Version>` set in `src/Enigma.Licensing/Enigma.Licensing.csproj`.
 - [ ] The desktop app's `<Version>` set in `src/Enigma.Licensing.Desktop/Enigma.Licensing.Desktop.csproj`
-      if this release ships the app too — it names the zips in step 7.
+      if this release ships the app too — it names the zips in step 7 and the MSI in step 8 — and
+      mirrored by hand in `src/Enigma.Licensing.Desktop/app.manifest` (`assemblyIdentity`, four-part
+      `X.Y.Z.0`).
 - [ ] `RELEASENOTES.md` has a top `X.Y.Z` section describing the release (newest-first; any
       `(unreleased)` heading renamed to `X.Y.Z`).
 - [ ] `<PackageReleaseNotes>` in the library csproj summarizes the release and ends by pointing at

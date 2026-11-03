@@ -22,9 +22,11 @@
          zips. FEATURE-82E5 took it to 2.0.0 alongside the library: the same change breaks both — the
          generate page lost two sections, the licence card two rows, and a saved profile two fields — so
          they happen to land on one number rather than being coupled to it. FEATURE-B6BB took both to
-         2.1.0 (the app: the uniform About dialog, the error net, the new icon, the packaging scripts). It is
-         also what the About dialog shows. -->
-    <Version>2.1.0</Version>
+         2.1.0 (the app: the uniform About dialog, the error net, the new icon, the packaging scripts).
+         FEATURE-FF4B took the app alone to 2.2.0 (the icon without its tile, the Windows installer); the
+         library stayed at 2.1.0. It is also what the About dialog shows, and the version
+         packaging/windows/buildmsi.ps1 gives the MSI. -->
+    <Version>2.2.0</Version>
   </PropertyGroup>
   <!-- LangVersion / Nullable / ImplicitUsings / TreatWarningsAsErrors come from Directory.Build.props;
        package versions from Directory.Packages.props (Central Package Management). -->

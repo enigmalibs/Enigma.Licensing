@@ -1,3 +1,57 @@
+# Enigma.Licensing v2.2.0 Release Notes
+
+A release of the desktop application, **Enigma.Licensing.Desktop 2.2.0**: the icon loses its tile, and
+the application gets a Windows installer.
+
+**The library is unchanged and stays at 2.1.0** — no new package goes with this release. Its code, its
+public surface, its dependencies, both document formats, all six signature schemes, the check order, the
+verdicts and the error contract are exactly 2.1.0's.
+
+## New Features
+
+These are all in the desktop application, **Enigma.Licensing.Desktop**.
+
+- **The icon without its tile.** The certificate and its green seal now stand on a transparent
+  background instead of a dark rounded square, like the rest of the Enigma applications. Same ten PNG
+  frames, from 16 to 256 px: in the executable, beside it as `app.ico`, in the About dialog and among the
+  Linux installer's eight icons.
+- **A Windows installer, in one command.** `packaging/windows/buildmsi.ps1` (or `buildmsi.bat` from a
+  `cmd` prompt) builds `artifacts/Enigma.Licensing.X.Y.Z.msi`:
+  1. it runs `git clean -dxf`, which deletes **every file git does not track**;
+  2. it publishes with `packaging/windows/publish.ps1`;
+  3. it packages the result, uncompressed, with Enigma.Msi, whose worker is vendored in
+     `packaging/windows/Enigma.Msi.Worker/`.
+
+  The MSI installs **Enigma Licensing** for all users in `%ProgramFiles%\Enigma Licensing`, with a
+  shortcut on the desktop and one in the program menu. Every MSI carries the same upgrade code, so a later
+  one replaces an installed version instead of installing beside it. Building it needs the WiX CLI
+  (`dotnet tool install --global wix`) besides the .NET 10 SDK; the installed application needs the
+  .NET 10 runtime.
+
+## Fixes
+
+- Nothing. No defect was reported against 2.1.0.
+
+## Dependencies
+
+- None changed. The Avalonia set stays at **12.1.4** although 12.1.5 is out: it moves only together with
+  **Enigma.Avalonia.Desktop 1.3.0**, which is built against 12.1.4 and has no newer release.
+- The installer build uses the worker of **Enigma.Msi 1.7.0** (WixSharp_wix4 2.14.2; the WiX Toolset's
+  DLLs are MS-RL, the rest MIT). It only builds the MSI: none of it is installed.
+
+## Compatibility
+
+- The application targets net10.0, as before. Its preference file and licence profiles are unchanged,
+  and every key and licence file reads as before.
+- The release zips (`scripts/publish.*`) are unchanged. The MSI is another way to install the
+  application on Windows, not a replacement for them.
+- The MSI is a 32-bit Windows Installer package (Enigma.Msi has no platform setting), so on 64-bit
+  Windows it installs under `Program Files (x86)`. The application inside is the win-x64 build.
+
+## Version
+
+- **2.2.0** for the application, superseding 2.1.0. The library stays at **2.1.0**.
+
 # Enigma.Licensing v2.1.0 Release Notes
 
 A maintenance release of the library, with **no API change**, and a feature release of the desktop

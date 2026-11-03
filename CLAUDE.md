@@ -68,9 +68,15 @@ nothing was tagged or published — true when written, corrected by `FEATURE-B6B
 prepared 2.1.0 of both** (`FEATURE-A0EB` … `FEATURE-B6BB`): the library dropped `net8.0` and raised its
 DI-abstractions floor to 10.x with no API change; the app gained the family's icon, About dialog and
 unhandled-exception net, `app.ico` beside the executable, Linux install/uninstall scripts and the
-Windows/Linux publish scripts. **2.1.0 is prepared, not released**: versions, notes, README, SECURITY and
-the runbook say 2.1.0, the package was pack-verified and both zips built and smoke-tested locally, and no
-tag, push or NuGet publish happened. See *Shipped* below.
+Windows/Linux publish scripts. **The maintainer then tagged it**: `2.1.0` is on `main` (`812ecd8`), but on
+2026-11-03 nuget.org still answered `["1.0.0","2.0.0"]` — the 2.1.0 *package* is not published yet.
+(Earlier revisions said nothing was tagged — true when written, corrected by `FEATURE-FF4B`.) See
+*Shipped* below.
+
+**The `feature/2026-11-03-icons-msi-release` run prepared the application's 2.2.0** (`FEATURE-BD63` …
+`FEATURE-FF4B`): the icon lost its tile, and `packaging/windows/buildmsi.ps1` builds a Windows installer
+the way Enigma.GitClient does, with a vendored Enigma.Msi worker. **An application-only release**: the app
+reads 2.2.0, the library stays at 2.1.0 with its notes unchanged. Nothing was tagged, pushed or installed.
 
 ## What this is
 
@@ -906,6 +912,23 @@ ReadyToRun publish folder, not the single-file zip.
   69 MB — the native Skia/HarfBuzz `.pdb`s are already trimmed by the csproj; the managed `.pdb`s and the
   XML docs of a plain publish are packaged.
 
+### The application's 2.2.0 release, prepared (FEATURE-FF4B)
+
+The app reads **2.2.0** (`app.manifest` 2.2.0.0); the library stays at **2.1.0**. `RELEASENOTES.md` gained a
+2.2.0 section that opens by saying the library is unchanged, `SECURITY.md` lists a supported line per
+component (library 2.1.x, application 2.2.x), and `docs/RELEASE.md` says how an application-only release
+runs — no pack, no push (steps 4–6 skipped), the tag still marks it.
+
+- **App-only because the user asked for "a new release of the app"** and nothing in the library moved. A
+  NuGet version with no change in it is noise, so the library's `<Version>`, `<PackageReleaseNotes>` and the
+  packed README's callout — all three describe the package — were left alone.
+- **Dependencies:** only the Avalonia set had an update (12.1.4 → 12.1.5); it was held, because
+  Enigma.Avalonia.Desktop 1.3.0, the newest, is built against 12.1.4.
+- **Gates run**: clean Release build (0 warnings, 0 `AVLN`), 786/786 tests, the app assembly at 2.2.0 and the
+  library's at 2.1.0, and `scripts/publish.ps1 win-x64` built `Enigma.Licensing.Desktop-2.2.0-win-x64.zip`
+  with the new `app.ico`. No pack-verify and no snippet gate: the package and the guides did not move.
+- **Nothing outward-facing happened.** No tag, no push, no MSI installed.
+
 ## Architecture & conventions
 
 These hold across the whole library, and everything here **ships** — `FEATURE-03A9` is complete, so no
@@ -1356,7 +1379,9 @@ MTP coverage needs `Microsoft.Testing.Extensions.CodeCoverage`. Measure before t
   `GeneratePackageOnBuild`: a release ships one `.nupkg`, packed explicitly. The library and the app
   version independently, in their own csproj — there is no solution-wide `<Version>` — but `FEATURE-82E5`
   put both on **2.0.0**, because one change broke both, and `FEATURE-B6BB` both on **2.1.0**, because one
-  run changed both. `app.manifest`'s four-part `assemblyIdentity` is
+  run changed both. `FEATURE-FF4B` moved the app **alone** to **2.2.0**: nothing in the library changed,
+  so its `<Version>`, `<PackageReleaseNotes>` and the README callout stayed on 2.1.0 — the notes mirror
+  the newest `RELEASENOTES.md` section that released the *library*. `app.manifest`'s four-part `assemblyIdentity` is
   kept in step with the app's `<Version>` by hand; nothing derives one from the other.
 - **Docs stay honest.** When a phase lands, update this file, `docs/roadmap.md` and the plan status
   in the same unit of work; do not leave "planned" markers on shipped code.
@@ -1383,5 +1408,7 @@ repository, so the items are independent and single-phase: `FEATURE-6C54` (Enigm
 and claims) and `FEATURE-82E5` (the v2.0.0 release); then the uniform-baseline run — `FEATURE-A0EB` (drop
 net8.0), `FEATURE-9083` (packages), `FEATURE-1ECA` (new icon), `FEATURE-CF21` (About dialog), `FEATURE-0156`
 (`app.ico` in the output), `FEATURE-5443` (error net, 2 phases), `FEATURE-F319` (Linux install),
-`FEATURE-11BB` (publish scripts) and `FEATURE-B6BB` (the 2.1.0 release). Read `docs/roadmap.md` for what is still `TODO`;
+`FEATURE-11BB` (publish scripts) and `FEATURE-B6BB` (the 2.1.0 release); then the icons-and-installer run —
+`FEATURE-BD63` (the icon without its tile), `FEATURE-6D42` (the Windows MSI, 2 phases) and `FEATURE-FF4B`
+(the app's 2.2.0 release). Read `docs/roadmap.md` for what is still `TODO`;
 a new work item means allocating an ID, planning it, and appending its row.

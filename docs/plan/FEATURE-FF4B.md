@@ -1,6 +1,6 @@
 # FEATURE-FF4B — Release 2.2.0
 
-**Status:** TODO
+**Status:** DONE
 **Type:** single-phase
 **Branch:** `feature/feature-ff4b-release-2-2-0`
 **Run:** feature/2026-11-03-icons-msi-release

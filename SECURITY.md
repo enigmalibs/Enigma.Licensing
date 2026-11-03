@@ -8,15 +8,20 @@ handled with priority.
 
 ## Supported versions
 
-Security fixes are provided for the latest released version. Enigma.Licensing follows
+Security fixes are provided for the latest released version of each component. Enigma.Licensing follows
 [Semantic Versioning](https://semver.org/), and users are encouraged to stay current with the
-newest release.
+newest release. The library and the desktop application version independently, so each has its own
+supported line.
 
-| Version | Supported          |
-|---------|--------------------|
-| 2.1.x   | :white_check_mark: |
-| 2.0.x   | :x:                |
-| 1.0.x   | :x:                |
+| Component                              | Version | Supported          |
+|----------------------------------------|---------|--------------------|
+| Enigma.Licensing (library)             | 2.1.x   | :white_check_mark: |
+|                                        | 2.0.x   | :x:                |
+|                                        | 1.0.x   | :x:                |
+| Enigma.Licensing.Desktop (application) | 2.2.x   | :white_check_mark: |
+|                                        | 2.1.x   | :x:                |
+|                                        | 2.0.x   | :x:                |
+|                                        | 1.0.x   | :x:                |
 
 ## Reporting a vulnerability
 
