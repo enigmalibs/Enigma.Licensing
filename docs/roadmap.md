@@ -34,3 +34,8 @@
 | FEATURE-F319 | Linux install and uninstall scripts            | DONE   | docs/plan/FEATURE-F319.md |
 | FEATURE-11BB | Publish scripts for Windows and Linux          | DONE   | docs/plan/FEATURE-11BB.md |
 | FEATURE-B6BB | Release 2.1.0                                  | DONE   | docs/plan/FEATURE-B6BB.md |
+| FEATURE-BD63 | New icon set without the tile                  | TODO   | docs/plan/FEATURE-BD63.md |
+| FEATURE-6D42 | Windows MSI installer                          | TODO   | docs/plan/FEATURE-6D42.md |
+| - PHASE01    | Vendor the Enigma.Msi worker CLI               | TODO   | (in FEATURE-6D42.md)      |
+| - PHASE02    | The buildmsi script                            | TODO   | (in FEATURE-6D42.md)      |
+| FEATURE-FF4B | Release 2.2.0                                  | TODO   | docs/plan/FEATURE-FF4B.md |
