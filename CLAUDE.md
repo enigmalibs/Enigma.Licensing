@@ -877,6 +877,35 @@ covers every runtime the dropped net8.0 did.
 - **Nothing outward-facing happened.** No tag, no push, no `dotnet nuget push`; `docs/RELEASE.md` is the
   maintainer's to run.
 
+### The Windows installer (FEATURE-6D42)
+
+`packaging/windows/buildmsi.ps1` (and `buildmsi.bat`, its cmd twin) builds
+`artifacts/Enigma.Licensing.X.Y.Z.msi` in one command, exactly as Enigma.GitClient does: check `git`,
+`dotnet`, `wix` and the worker → `git clean -dxf` → `packaging/windows/publish.ps1` → write an Enigma.Msi
+profile (`artifacts/Enigma.Licensing.X.Y.Z.msipkg.json`) → `Enigma.Msi.Worker.exe build`. A third
+pipeline beside the two above, and built on the framework-dependent one: the MSI installs the
+ReadyToRun publish folder, not the single-file zip.
+
+- **`git clean -dxf` deletes every file git does not track.** Never run the script in this repository
+  from an agent: verify it in a scratch clone with the tree committed there, as `FEATURE-6D42-PHASE02` did.
+- **The worker is vendored**, not built: `packaging/windows/Enigma.Msi.Worker/` is Enigma.Msi **1.7.0**
+  (net472, WixSharp_wix4 2.14.2), Enigma.GitClient's copy blob for blob — the one every Enigma app ships. Its
+  `README.md` holds the source, the licences (MIT; MS-RL for the WiX DLLs — none goes into the MSI) and the
+  refresh procedure. `.wixsharp/`, which WixSharp writes beside it, is git-ignored.
+- **The version is the app's own**: `<Version>` of the app csproj, read with `XmlDocument` (Windows
+  PowerShell 5.1 would read the UTF-8 file as ANSI through `Get-Content`) — not `Directory.Build.props`,
+  which has none. The script is ASCII for the same reason; the manufacturer's `é` is `[char]0x00E9`.
+- **The upgrade code is the product line's identity**: `4bad4f52-dd12-4b57-8d94-52fe1936f034`, generated
+  for the first MSI. Never change it — an MSI with another code installs beside the old version.
+  `WindowsInstallerIdentityTests` (desktop suite) pins it, with the product name (= `AppInfo.Title`) and the
+  assembly (= the app assembly's name, whose csproj must exist). The product code is new per build, and no
+  MSI profile is committed.
+- **What it installs**: "Enigma Licensing", per machine, `%ProgramFiles%\Enigma Licensing` (a 32-bit
+  package — Enigma.Msi has no platform setting), uncompressed, shortcuts on the desktop and in the program
+  menu, `app.ico` for both and for *Installed apps*. Verified by reading the built MSI's tables: 80 files,
+  69 MB — the native Skia/HarfBuzz `.pdb`s are already trimmed by the csproj; the managed `.pdb`s and the
+  XML docs of a plain publish are packaged.
+
 ## Architecture & conventions
 
 These hold across the whole library, and everything here **ships** — `FEATURE-03A9` is complete, so no
@@ -1083,6 +1112,7 @@ tests/Enigma.Licensing.Desktop.UnitTests/   xUnit v3 test suite for the app (net
   Services/                          NotificationService's timing, BusyOverlayService's card, the safety net (friend access)
   LicenseSamples.cs                  Licences and verdicts built by hand — no cryptography, nothing that moves
   AppIconTests.cs                    app.ico beside the executable, byte for byte the asset (FEATURE-0156)
+  WindowsInstallerIdentityTests.cs   buildmsi.ps1's upgrade code, product name and assembly, pinned (FEATURE-6D42)
   ViewModels/                        The rail, the appearance selector, and the three real pages + their round-trips
   Resources/                         AppInfo's shape (a version, no build metadata, an https project URL)
   TestDoubles/                       The app's seams and the library ones beneath them, plus RecordingLogger
@@ -1095,7 +1125,7 @@ docs/guides/keys.md                  enigma-key/1, generation, password encrypti
 docs/guides/generating-licenses.md   LicenseRequest, the half-open window, wildcards, the three overloads
 docs/guides/validating-licenses.md   The check order, the seven failures, ILicenseStore, AddEnigmaLicensing()
 docs/guides/device-identity.md       DeviceIdentifier, its weaknesses, and plugging in another scheme
-docs/RELEASE.md                      The release runbook — pre-flight, merge, tag, pack, push, app zips
+docs/RELEASE.md                      The release runbook — pre-flight, merge, tag, pack, push, app zips, MSI
 docs/migrations/1.0.0-to-2.0.0.md    Migrating a consumer off Features/Claims; an agent-consumable prompt part
 packaging/linux/install.sh           Per-user XDG install of the app: build or --from, symlink, entry, 8 icons (FEATURE-F319)
 packaging/linux/uninstall.sh         Removes exactly that; never ~/.config/Enigma.Licensing, never a user file
@@ -1104,6 +1134,9 @@ packaging/linux/icons/               enigma-licensing-<N>.png ×8, byte for byte
 packaging/linux/publish.sh           dotnet publish … -r linux-x64 -p:PublishReadyToRun=true, from anywhere (FEATURE-11BB)
 packaging/windows/publish.ps1        The same for win-x64 (Windows PowerShell 5.1+)
 packaging/windows/publish.bat        Its cmd twin (CRLF), no execution policy involved
+packaging/windows/buildmsi.ps1       git clean -dxf, publish.ps1, then the MSI: artifacts/Enigma.Licensing.X.Y.Z.msi (FEATURE-6D42)
+packaging/windows/buildmsi.bat       Its cmd twin (CRLF)
+packaging/windows/Enigma.Msi.Worker/ The vendored Enigma.Msi 1.7.0 worker CLI + its README (source, licences, refresh)
 scripts/publish.sh                   Builds the app's distribution zips; version asked of MSBuild
 scripts/publish.ps1                  Its PowerShell twin — same artifacts, cut a release from either OS
 ```

@@ -115,7 +115,13 @@ repository builds it and installs it for the current user — application, launc
 no root needed — and `uninstall.sh` beside it removes exactly that. To publish it yourself, run
 `packaging/windows/publish.ps1` (or `publish.bat`) on Windows, or `packaging/linux/publish.sh` on
 Linux: each is one `dotnet publish -c Release -r <win-x64|linux-x64> -p:PublishReadyToRun=true`,
-whose output lands in `src/Enigma.Licensing.Desktop/bin/Release/net10.0/<rid>/publish/`.
+whose output lands in `src/Enigma.Licensing.Desktop/bin/Release/net10.0/<rid>/publish/`. On Windows,
+`packaging/windows/buildmsi.ps1` (or `buildmsi.bat`) builds an installer,
+`artifacts/Enigma.Licensing.X.Y.Z.msi`: it installs **Enigma Licensing** for all users under
+`%ProgramFiles%`, with a desktop and a program-menu shortcut, and replaces a version installed from an
+earlier MSI. The script starts with `git clean -dxf`, which deletes **every file git does not track**,
+and needs the WiX CLI (`dotnet tool install --global wix`) besides the .NET 10 SDK; the installed
+application needs the .NET 10 runtime.
 
 ## License
 

@@ -2,7 +2,7 @@
 
 Reusable checklist for publishing a new **Enigma.Licensing** version to NuGet. Only the packable
 library project (`src/Enigma.Licensing/`) is published; the desktop application ships as a
-self-contained zip per platform (step 7) and is never pushed to NuGet.
+self-contained zip per platform (step 7) and a Windows installer (step 8), and is never pushed to NuGet.
 
 Replace `X.Y.Z` with the version being released (e.g. `1.0.0`) throughout. The library's version lives
 in `src/Enigma.Licensing/Enigma.Licensing.csproj` (`<Version>`); the desktop app carries its own
@@ -145,3 +145,46 @@ GitHub release rather than committed.
       does not carry the Unix executable bit, so an artifact built on Windows needs `chmod +x` after
       extraction. `scripts/publish.sh` uses Info-ZIP, which preserves it.
 - [ ] Both zips attached to the GitHub release for the tag pushed in step 3.
+
+## 8. Windows installer
+
+The Windows installer is built from the merged default branch, after the tag, and attached to the
+GitHub release beside the zips:
+
+```powershell
+packaging\windows\buildmsi.ps1          # or buildmsi.bat from a cmd prompt
+```
+
+It runs `git clean -dxf` first, which deletes every file git does not track — `artifacts\` included, so
+build the zips (step 7) **after** it, or move them out first. Then it publishes with
+`packaging\windows\publish.ps1` (framework-dependent, ReadyToRun) and packages the result with the
+vendored Enigma.Msi worker (`packaging\windows\Enigma.Msi.Worker\`) into
+`artifacts\Enigma.Licensing.X.Y.Z.msi`, beside the `.msipkg.json` profile it was built from. `X.Y.Z` is
+the **app's** `<Version>`. It needs the WiX CLI (`dotnet tool install --global wix`) besides the .NET 10
+SDK, and checks for both before it cleans anything.
+
+| What | Where |
+|---|---|
+| the application, for all users | `%ProgramFiles%\Enigma Licensing` (32-bit package: `Program Files (x86)` on 64-bit Windows) |
+| the shortcuts, "Enigma Licensing" | the desktop and the program menu |
+| the entry in *Installed apps* | "Enigma Licensing", publisher "Josué Clément" |
+
+Installing it replaces an earlier version installed from an MSI, and uninstalling it from *Installed
+apps* leaves `%APPDATA%\Enigma.Licensing` (the appearance preference) and every key, licence and profile
+file a user saved alone. The installed application needs the .NET 10 runtime.
+
+- [ ] `artifacts\Enigma.Licensing.X.Y.Z.msi` built, its name carrying the app's `<Version>`.
+- [ ] Installed on a Windows machine: both shortcuts start the application, and its About dialog reports
+      `X.Y.Z`.
+- [ ] Attached to the GitHub release for the tag pushed in step 3.
+
+## The Windows installer's identity
+
+There is no committed MSI profile per version. `buildmsi.ps1` writes the profile on every build from the
+app csproj (the version) and its own constants, so a release changes nothing for the installer.
+
+- **`upgradeCode`** is `4bad4f52-dd12-4b57-8d94-52fe1936f034`, generated for the first MSI
+  (`FEATURE-6D42`) and written once in `buildmsi.ps1`. It must never change: an MSI with another code
+  installs beside the old version instead of replacing it. `WindowsInstallerIdentityTests` pins it, with
+  the product name and the assembly the script packages.
+- **`productId`** is new for every build.
