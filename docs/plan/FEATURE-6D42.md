@@ -1,6 +1,6 @@
 # FEATURE-6D42 — Windows MSI installer
 
-**Status:** TODO
+**Status:** IN PROGRESS
 **Type:** multi-phase
 **Branch:** one per phase, see below
 **Run:** feature/2026-11-03-icons-msi-release
@@ -61,7 +61,7 @@ named **Enigma Licensing**, carries this product line's own upgrade code, and th
 ## PHASE01 — Vendor the Enigma.Msi worker CLI
 
 **Branch:** `feature/feature-6d42-phase01-vendor-msi-worker`
-**Status:** TODO
+**Status:** DONE
 
 ### Steps
 
