@@ -23,7 +23,9 @@
        library and the desktop app version independently; FEATURE-82E5 took it to 2.0.0, a major bump
        because five public members were removed from the published 1.0.0, and FEATURE-B6BB to 2.1.0 (net8.0
        target dropped, dependency floors raised, no API change). Keep <PackageReleaseNotes>
-       and RELEASENOTES.md in step — the notes below mirror that file's top section. -->
+       and RELEASENOTES.md in step — the notes below mirror that file's newest section that released the
+       library. An application-only release (2.2.0, FEATURE-FF4B) leaves both this version and these
+       notes alone. -->
   <PropertyGroup>
     <PackageId>Enigma.Licensing</PackageId>
     <Version>2.1.0</Version>

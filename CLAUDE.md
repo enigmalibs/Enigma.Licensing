@@ -68,9 +68,15 @@ nothing was tagged or published — true when written, corrected by `FEATURE-B6B
 prepared 2.1.0 of both** (`FEATURE-A0EB` … `FEATURE-B6BB`): the library dropped `net8.0` and raised its
 DI-abstractions floor to 10.x with no API change; the app gained the family's icon, About dialog and
 unhandled-exception net, `app.ico` beside the executable, Linux install/uninstall scripts and the
-Windows/Linux publish scripts. **2.1.0 is prepared, not released**: versions, notes, README, SECURITY and
-the runbook say 2.1.0, the package was pack-verified and both zips built and smoke-tested locally, and no
-tag, push or NuGet publish happened. See *Shipped* below.
+Windows/Linux publish scripts. **The maintainer then tagged it**: `2.1.0` is on `main` (`812ecd8`), but on
+2026-11-03 nuget.org still answered `["1.0.0","2.0.0"]` — the 2.1.0 *package* is not published yet.
+(Earlier revisions said nothing was tagged — true when written, corrected by `FEATURE-FF4B`.) See
+*Shipped* below.
+
+**The `feature/2026-11-03-icons-msi-release` run prepared the application's 2.2.0** (`FEATURE-BD63` …
+`FEATURE-FF4B`): the icon lost its tile, and `packaging/windows/buildmsi.ps1` builds a Windows installer
+the way Enigma.GitClient does, with a vendored Enigma.Msi worker. **An application-only release**: the app
+reads 2.2.0, the library stays at 2.1.0 with its notes unchanged. Nothing was tagged, pushed or installed.
 
 ## What this is
 
@@ -668,6 +674,11 @@ the whole of the change: the two places that point at it — `<ApplicationIcon>`
   fine — the DIB choice was caution about an unknown, not an observed failure. A redesign happens in the
   Branding repository, never here. The about-box bitmap now exists too: `FEATURE-CF21` ships
   `Assets/app-256.png`, the `.ico`'s 256 px frame byte for byte.
+- **The tile is gone since `FEATURE-BD63`.** The same certificate and seal now stand on a **transparent**
+  background, the certificate's outline cut where the seal overlaps it — the family's tile-less set,
+  `Branding/Apps/export.py final2`, output in `Branding/Apps/final2/licensing/`. Same ten PNG frames, same
+  file names: `appicon.ico`, `app-256.png` and the eight Linux PNGs are that folder's files byte for byte.
+  The SVG masters stay in the Branding repository; nothing here consumes one.
 
 ### Feature flags and claims are gone (FEATURE-B086)
 
@@ -872,6 +883,52 @@ covers every runtime the dropped net8.0 did.
 - **Nothing outward-facing happened.** No tag, no push, no `dotnet nuget push`; `docs/RELEASE.md` is the
   maintainer's to run.
 
+### The Windows installer (FEATURE-6D42)
+
+`packaging/windows/buildmsi.ps1` (and `buildmsi.bat`, its cmd twin) builds
+`artifacts/Enigma.Licensing.X.Y.Z.msi` in one command, exactly as Enigma.GitClient does: check `git`,
+`dotnet`, `wix` and the worker → `git clean -dxf` → `packaging/windows/publish.ps1` → write an Enigma.Msi
+profile (`artifacts/Enigma.Licensing.X.Y.Z.msipkg.json`) → `Enigma.Msi.Worker.exe build`. A third
+pipeline beside the two above, and built on the framework-dependent one: the MSI installs the
+ReadyToRun publish folder, not the single-file zip.
+
+- **`git clean -dxf` deletes every file git does not track.** Never run the script in this repository
+  from an agent: verify it in a scratch clone with the tree committed there, as `FEATURE-6D42-PHASE02` did.
+- **The worker is vendored**, not built: `packaging/windows/Enigma.Msi.Worker/` is Enigma.Msi **1.7.0**
+  (net472, WixSharp_wix4 2.14.2), Enigma.GitClient's copy blob for blob — the one every Enigma app ships. Its
+  `README.md` holds the source, the licences (MIT; MS-RL for the WiX DLLs — none goes into the MSI) and the
+  refresh procedure. `.wixsharp/`, which WixSharp writes beside it, is git-ignored.
+- **The version is the app's own**: `<Version>` of the app csproj, read with `XmlDocument` (Windows
+  PowerShell 5.1 would read the UTF-8 file as ANSI through `Get-Content`) — not `Directory.Build.props`,
+  which has none. The script is ASCII for the same reason; the manufacturer's `é` is `[char]0x00E9`.
+- **The upgrade code is the product line's identity**: `4bad4f52-dd12-4b57-8d94-52fe1936f034`, generated
+  for the first MSI. Never change it — an MSI with another code installs beside the old version.
+  `WindowsInstallerIdentityTests` (desktop suite) pins it, with the product name (= `AppInfo.Title`) and the
+  assembly (= the app assembly's name, whose csproj must exist). The product code is new per build, and no
+  MSI profile is committed.
+- **What it installs**: "Enigma Licensing", per machine, `%ProgramFiles%\Enigma Licensing` (a 32-bit
+  package — Enigma.Msi has no platform setting), uncompressed, shortcuts on the desktop and in the program
+  menu, `app.ico` for both and for *Installed apps*. Verified by reading the built MSI's tables: 80 files,
+  69 MB — the native Skia/HarfBuzz `.pdb`s are already trimmed by the csproj; the managed `.pdb`s and the
+  XML docs of a plain publish are packaged.
+
+### The application's 2.2.0 release, prepared (FEATURE-FF4B)
+
+The app reads **2.2.0** (`app.manifest` 2.2.0.0); the library stays at **2.1.0**. `RELEASENOTES.md` gained a
+2.2.0 section that opens by saying the library is unchanged, `SECURITY.md` lists a supported line per
+component (library 2.1.x, application 2.2.x), and `docs/RELEASE.md` says how an application-only release
+runs — no pack, no push (steps 4–6 skipped), the tag still marks it.
+
+- **App-only because the user asked for "a new release of the app"** and nothing in the library moved. A
+  NuGet version with no change in it is noise, so the library's `<Version>`, `<PackageReleaseNotes>` and the
+  packed README's callout — all three describe the package — were left alone.
+- **Dependencies:** only the Avalonia set had an update (12.1.4 → 12.1.5); it was held, because
+  Enigma.Avalonia.Desktop 1.3.0, the newest, is built against 12.1.4.
+- **Gates run**: clean Release build (0 warnings, 0 `AVLN`), 786/786 tests, the app assembly at 2.2.0 and the
+  library's at 2.1.0, and `scripts/publish.ps1 win-x64` built `Enigma.Licensing.Desktop-2.2.0-win-x64.zip`
+  with the new `app.ico`. No pack-verify and no snippet gate: the package and the guides did not move.
+- **Nothing outward-facing happened.** No tag, no push, no MSI installed.
+
 ## Architecture & conventions
 
 These hold across the whole library, and everything here **ships** — `FEATURE-03A9` is complete, so no
@@ -1009,7 +1066,7 @@ src/Enigma.Licensing.Desktop/        The Avalonia issuer app (net10.0)
   Program.cs                         Synchronous entry point; installs the exception hooks, the host is built in App
   App.axaml(.cs)                     Theme merge + style classes (the centred page frame); owns the IHost
   app.manifest                       Per-monitor-v2 DPI awareness (version bumped at release time)
-  Assets/appicon.ico                 A certificate and seal on a dark square; 10 PNG frames, 16→256 (FEATURE-1ECA);
+  Assets/appicon.ico                 A certificate and seal, no tile; 10 PNG frames, 16→256 (FEATURE-BD63);
                                      also copied beside the executable as app.ico (FEATURE-0156)
   Assets/app-256.png                 The icon's 256 px frame, for the About dialog (FEATURE-CF21)
   Hosting/EnigmaAvaloniaServiceCollectionExtensions.cs   AddEnigmaAvaloniaDesktop() — the library's six
@@ -1078,6 +1135,7 @@ tests/Enigma.Licensing.Desktop.UnitTests/   xUnit v3 test suite for the app (net
   Services/                          NotificationService's timing, BusyOverlayService's card, the safety net (friend access)
   LicenseSamples.cs                  Licences and verdicts built by hand — no cryptography, nothing that moves
   AppIconTests.cs                    app.ico beside the executable, byte for byte the asset (FEATURE-0156)
+  WindowsInstallerIdentityTests.cs   buildmsi.ps1's upgrade code, product name and assembly, pinned (FEATURE-6D42)
   ViewModels/                        The rail, the appearance selector, and the three real pages + their round-trips
   Resources/                         AppInfo's shape (a version, no build metadata, an https project URL)
   TestDoubles/                       The app's seams and the library ones beneath them, plus RecordingLogger
@@ -1090,7 +1148,7 @@ docs/guides/keys.md                  enigma-key/1, generation, password encrypti
 docs/guides/generating-licenses.md   LicenseRequest, the half-open window, wildcards, the three overloads
 docs/guides/validating-licenses.md   The check order, the seven failures, ILicenseStore, AddEnigmaLicensing()
 docs/guides/device-identity.md       DeviceIdentifier, its weaknesses, and plugging in another scheme
-docs/RELEASE.md                      The release runbook — pre-flight, merge, tag, pack, push, app zips
+docs/RELEASE.md                      The release runbook — pre-flight, merge, tag, pack, push, app zips, MSI
 docs/migrations/1.0.0-to-2.0.0.md    Migrating a consumer off Features/Claims; an agent-consumable prompt part
 packaging/linux/install.sh           Per-user XDG install of the app: build or --from, symlink, entry, 8 icons (FEATURE-F319)
 packaging/linux/uninstall.sh         Removes exactly that; never ~/.config/Enigma.Licensing, never a user file
@@ -1099,6 +1157,9 @@ packaging/linux/icons/               enigma-licensing-<N>.png ×8, byte for byte
 packaging/linux/publish.sh           dotnet publish … -r linux-x64 -p:PublishReadyToRun=true, from anywhere (FEATURE-11BB)
 packaging/windows/publish.ps1        The same for win-x64 (Windows PowerShell 5.1+)
 packaging/windows/publish.bat        Its cmd twin (CRLF), no execution policy involved
+packaging/windows/buildmsi.ps1       git clean -dxf, publish.ps1, then the MSI: artifacts/Enigma.Licensing.X.Y.Z.msi (FEATURE-6D42)
+packaging/windows/buildmsi.bat       Its cmd twin (CRLF)
+packaging/windows/Enigma.Msi.Worker/ The vendored Enigma.Msi 1.7.0 worker CLI + its README (source, licences, refresh)
 scripts/publish.sh                   Builds the app's distribution zips; version asked of MSBuild
 scripts/publish.ps1                  Its PowerShell twin — same artifacts, cut a release from either OS
 ```
@@ -1318,7 +1379,9 @@ MTP coverage needs `Microsoft.Testing.Extensions.CodeCoverage`. Measure before t
   `GeneratePackageOnBuild`: a release ships one `.nupkg`, packed explicitly. The library and the app
   version independently, in their own csproj — there is no solution-wide `<Version>` — but `FEATURE-82E5`
   put both on **2.0.0**, because one change broke both, and `FEATURE-B6BB` both on **2.1.0**, because one
-  run changed both. `app.manifest`'s four-part `assemblyIdentity` is
+  run changed both. `FEATURE-FF4B` moved the app **alone** to **2.2.0**: nothing in the library changed,
+  so its `<Version>`, `<PackageReleaseNotes>` and the README callout stayed on 2.1.0 — the notes mirror
+  the newest `RELEASENOTES.md` section that released the *library*. `app.manifest`'s four-part `assemblyIdentity` is
   kept in step with the app's `<Version>` by hand; nothing derives one from the other.
 - **Docs stay honest.** When a phase lands, update this file, `docs/roadmap.md` and the plan status
   in the same unit of work; do not leave "planned" markers on shipped code.
@@ -1345,5 +1408,7 @@ repository, so the items are independent and single-phase: `FEATURE-6C54` (Enigm
 and claims) and `FEATURE-82E5` (the v2.0.0 release); then the uniform-baseline run — `FEATURE-A0EB` (drop
 net8.0), `FEATURE-9083` (packages), `FEATURE-1ECA` (new icon), `FEATURE-CF21` (About dialog), `FEATURE-0156`
 (`app.ico` in the output), `FEATURE-5443` (error net, 2 phases), `FEATURE-F319` (Linux install),
-`FEATURE-11BB` (publish scripts) and `FEATURE-B6BB` (the 2.1.0 release). Read `docs/roadmap.md` for what is still `TODO`;
+`FEATURE-11BB` (publish scripts) and `FEATURE-B6BB` (the 2.1.0 release); then the icons-and-installer run —
+`FEATURE-BD63` (the icon without its tile), `FEATURE-6D42` (the Windows MSI, 2 phases) and `FEATURE-FF4B`
+(the app's 2.2.0 release). Read `docs/roadmap.md` for what is still `TODO`;
 a new work item means allocating an ID, planning it, and appending its row.
