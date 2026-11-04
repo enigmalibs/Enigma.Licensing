@@ -1,6 +1,6 @@
 # FEATURE-1A5D — Icon set filling the frame
 
-**Status:** TODO
+**Status:** DONE
 **Type:** single-phase
 **Branch:** `feature/feature-1a5d-final3-icon-set`
 **Run:** feature/2026-11-04-final3-icons-release

@@ -679,6 +679,10 @@ the whole of the change: the two places that point at it — `<ApplicationIcon>`
   `Branding/Apps/export.py final2`, output in `Branding/Apps/final2/licensing/`. Same ten PNG frames, same
   file names: `appicon.ico`, `app-256.png` and the eight Linux PNGs are that folder's files byte for byte.
   The SVG masters stay in the Branding repository; nothing here consumes one.
+- **It fills the frame since `FEATURE-1A5D`.** The same tile-less drawing, scaled by 1.1915 and centred so
+  its longest side spans 16 to 240 of the 256-unit box, with a heavier simplified master for the 16–32 px
+  frames — `Branding/Apps/export.py final3`, output in `Branding/Apps/final3/licensing/`. Same ten PNG
+  frames and file names; the three destinations above are that folder's files byte for byte now.
 
 ### Feature flags and claims are gone (FEATURE-B086)
 
@@ -1066,7 +1070,7 @@ src/Enigma.Licensing.Desktop/        The Avalonia issuer app (net10.0)
   Program.cs                         Synchronous entry point; installs the exception hooks, the host is built in App
   App.axaml(.cs)                     Theme merge + style classes (the centred page frame); owns the IHost
   app.manifest                       Per-monitor-v2 DPI awareness (version bumped at release time)
-  Assets/appicon.ico                 A certificate and seal, no tile; 10 PNG frames, 16→256 (FEATURE-BD63);
+  Assets/appicon.ico                 A certificate and seal, no tile, filling the frame; 10 PNG frames, 16→256 (FEATURE-1A5D);
                                      also copied beside the executable as app.ico (FEATURE-0156)
   Assets/app-256.png                 The icon's 256 px frame, for the About dialog (FEATURE-CF21)
   Hosting/EnigmaAvaloniaServiceCollectionExtensions.cs   AddEnigmaAvaloniaDesktop() — the library's six
