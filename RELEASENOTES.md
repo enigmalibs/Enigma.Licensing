@@ -1,3 +1,48 @@
+# Enigma.Licensing v2.3.0 Release Notes
+
+A release of the desktop application, **Enigma.Licensing.Desktop 2.3.0**: the icon now fills its frame.
+
+**The library is unchanged and stays at 2.1.0.** No new package goes with this release. Its code, public
+surface and dependencies are exactly 2.1.0's, and so are both document formats, all six signature schemes,
+the check order, the verdicts and the error contract.
+
+## New Features
+
+This is in the desktop application, **Enigma.Licensing.Desktop**.
+
+- **The icon fills its frame.** The certificate and its green seal are the same as in 2.2.0, still on a
+  transparent background, but drawn larger: the drawing now spans the whole icon instead of sitting inside
+  a margin. The 16–32 px frames are a simplified drawing with heavier marks, so they stay legible in a
+  title bar or a taskbar. There are the same ten PNG frames as before, from 16 to 256 px, and they appear
+  in:
+  - the executable;
+  - the window and the taskbar;
+  - `app.ico` beside the executable, which also supplies the Windows installer's shortcuts and the
+    *Installed apps* entry;
+  - the About dialog;
+  - the Linux installer's eight icons.
+
+## Fixes
+
+- Nothing. No defect was reported against 2.2.0.
+
+## Dependencies
+
+- None changed. The Avalonia set stays at **12.1.4** although 12.1.5 is out. It moves only together with
+  **Enigma.Avalonia.Desktop 1.3.0**, which is built against 12.1.4 and has no newer release.
+
+## Compatibility
+
+- The application targets net10.0, as before. Its preference file and licence profiles are unchanged, and
+  every key and licence file reads as before.
+- The 2.3.0 MSI (`packaging/windows/buildmsi.ps1`, which takes its version from the application's project
+  file) carries the same upgrade code as 2.2.0's. It replaces an installed 2.2.0 instead of installing
+  beside it.
+
+## Version
+
+- **2.3.0** for the application, superseding 2.2.0. The library stays at **2.1.0**.
+
 # Enigma.Licensing v2.2.0 Release Notes
 
 A release of the desktop application, **Enigma.Licensing.Desktop 2.2.0**: the icon loses its tile, and
