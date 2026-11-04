@@ -1,6 +1,6 @@
 # FEATURE-7DB7 — Release 2.3.0
 
-**Status:** TODO
+**Status:** DONE
 **Type:** single-phase
 **Branch:** `feature/feature-7db7-release-2-3-0`
 **Run:** feature/2026-11-04-final3-icons-release

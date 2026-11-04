@@ -76,7 +76,14 @@ Windows/Linux publish scripts. **The maintainer then tagged it**: `2.1.0` is on 
 **The `feature/2026-11-03-icons-msi-release` run prepared the application's 2.2.0** (`FEATURE-BD63` …
 `FEATURE-FF4B`): the icon lost its tile, and `packaging/windows/buildmsi.ps1` builds a Windows installer
 the way Enigma.GitClient does, with a vendored Enigma.Msi worker. **An application-only release**: the app
-reads 2.2.0, the library stays at 2.1.0 with its notes unchanged. Nothing was tagged, pushed or installed.
+reads 2.2.0, the library stays at 2.1.0 with its notes unchanged. **The maintainer then tagged it**: `2.2.0`
+is on `main` (`417e490`); on 2026-11-04 nuget.org still answered `["1.0.0","2.0.0"]`. (Earlier revisions said
+nothing was tagged — true when written, corrected by `FEATURE-7DB7`.)
+
+**The `feature/2026-11-04-final3-icons-release` run prepared the application's 2.3.0** (`FEATURE-1A5D`,
+`FEATURE-7DB7`): the icon now fills its frame (the Branding repository's `final3` set). Another
+application-only release: the app reads 2.3.0, the library stays at 2.1.0. Nothing was tagged, pushed or
+installed.
 
 ## What this is
 
@@ -933,6 +940,24 @@ runs — no pack, no push (steps 4–6 skipped), the tag still marks it.
   with the new `app.ico`. No pack-verify and no snippet gate: the package and the guides did not move.
 - **Nothing outward-facing happened.** No tag, no push, no MSI installed.
 
+### The application's 2.3.0 release, prepared (FEATURE-7DB7)
+
+The app reads **2.3.0** (`app.manifest` 2.3.0.0); the library stays at **2.1.0**, as in 2.2.0. `RELEASENOTES.md`
+gained a 2.3.0 section (the icon filling its frame), and `SECURITY.md` supports the application's 2.3.x.
+
+- **`buildmsi.ps1` carries no version, and that is the point.** It reads the app csproj's `<Version>`, so the
+  bump is its update; a literal in the script would be a second copy free to disagree with the executable.
+  The 2.3.0 MSI, built in a scratch clone, read `ProductVersion` 2.3.0, the unchanged upgrade code, and the
+  new `app.ico` (22,117 bytes) as both the product icon and the shortcuts'.
+- **`DOTNET_ROOT=~/.dotnet` breaks the MSI build on this machine.** `dotnet` itself is in `C:\Program
+  Files\dotnet` and ignores the variable, but `wix.exe` is an apphost that honours it, finds no runtime under
+  `~/.dotnet` (only global tools live there), and WixSharp then reports a missing `WixToolset.UI.wixext`.
+  Run `buildmsi` without the variable.
+- **Gates run**: clean Release build (0 warnings, 0 `AVLN`), 786/786 tests, the app assembly at 2.3.0 and the
+  library's at 2.1.0, `scripts/publish.ps1 win-x64` → `Enigma.Licensing.Desktop-2.3.0-win-x64.zip` with the new
+  `app.ico`. The Avalonia set (12.1.5 available) held, as for 2.2.0.
+- **Nothing outward-facing happened.** No tag, no push, no MSI installed.
+
 ## Architecture & conventions
 
 These hold across the whole library, and everything here **ships** — `FEATURE-03A9` is complete, so no
@@ -1383,8 +1408,9 @@ MTP coverage needs `Microsoft.Testing.Extensions.CodeCoverage`. Measure before t
   `GeneratePackageOnBuild`: a release ships one `.nupkg`, packed explicitly. The library and the app
   version independently, in their own csproj — there is no solution-wide `<Version>` — but `FEATURE-82E5`
   put both on **2.0.0**, because one change broke both, and `FEATURE-B6BB` both on **2.1.0**, because one
-  run changed both. `FEATURE-FF4B` moved the app **alone** to **2.2.0**: nothing in the library changed,
-  so its `<Version>`, `<PackageReleaseNotes>` and the README callout stayed on 2.1.0 — the notes mirror
+  run changed both. `FEATURE-FF4B` moved the app **alone** to **2.2.0**, and `FEATURE-7DB7` to **2.3.0**:
+  nothing in the library changed, so its `<Version>`, `<PackageReleaseNotes>` and the README callout stayed
+  on 2.1.0 — the notes mirror
   the newest `RELEASENOTES.md` section that released the *library*. `app.manifest`'s four-part `assemblyIdentity` is
   kept in step with the app's `<Version>` by hand; nothing derives one from the other.
 - **Docs stay honest.** When a phase lands, update this file, `docs/roadmap.md` and the plan status
@@ -1414,5 +1440,6 @@ net8.0), `FEATURE-9083` (packages), `FEATURE-1ECA` (new icon), `FEATURE-CF21` (A
 (`app.ico` in the output), `FEATURE-5443` (error net, 2 phases), `FEATURE-F319` (Linux install),
 `FEATURE-11BB` (publish scripts) and `FEATURE-B6BB` (the 2.1.0 release); then the icons-and-installer run —
 `FEATURE-BD63` (the icon without its tile), `FEATURE-6D42` (the Windows MSI, 2 phases) and `FEATURE-FF4B`
-(the app's 2.2.0 release). Read `docs/roadmap.md` for what is still `TODO`;
+(the app's 2.2.0 release); then `FEATURE-1A5D` (the icon filling its frame) and `FEATURE-7DB7` (the app's
+2.3.0 release). Read `docs/roadmap.md` for what is still `TODO`;
 a new work item means allocating an ID, planning it, and appending its row.

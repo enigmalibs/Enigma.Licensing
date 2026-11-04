@@ -40,4 +40,4 @@
 | - PHASE02    | The buildmsi script                            | DONE   | (in FEATURE-6D42.md)      |
 | FEATURE-FF4B | Release 2.2.0                                  | DONE   | docs/plan/FEATURE-FF4B.md |
 | FEATURE-1A5D | Icon set filling the frame                     | DONE   | docs/plan/FEATURE-1A5D.md |
-| FEATURE-7DB7 | Release 2.3.0                                  | TODO   | docs/plan/FEATURE-7DB7.md |
+| FEATURE-7DB7 | Release 2.3.0                                  | DONE   | docs/plan/FEATURE-7DB7.md |
